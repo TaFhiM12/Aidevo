@@ -1,55 +1,53 @@
 import React from "react";
 import Links from "../common/Links";
 import { NavLink } from "react-router";
-import { LogIn } from "lucide-react";
+import { LogIn, Menu, X } from "lucide-react";
+import { useState } from "react";
 import Logo from "../common/Logo";
 
 const Navbar = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <div className="navbar bg-base-100 shadow-sm">
-      <div className="navbar-start">
-        <div className="dropdown">
-          <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo and mobile menu button */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              {" "}
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h8m-8 6h16"
-              />{" "}
-            </svg>
+              {isOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <Logo />
           </div>
-          <ul
-            tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow"
-          >
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center">
             <Links />
-          </ul>
+          </div>
+
+          {/* Sign In Button */}
+          <div className="flex items-center gap-4">
+            <NavLink
+              to="/signin"
+              className="flex items-center gap-2 px-4 py-2 bg-[#4bbeff] hover:bg-[#3aa8e6] text-white rounded-lg font-medium transition-colors duration-200 text-sm"
+            >
+              <LogIn size={16} />
+              <span>Sign In</span>
+            </NavLink>
+          </div>
         </div>
-       <Logo/>
+
+        {/* Mobile Navigation */}
+        {isOpen && (
+          <div className="md:hidden border-t border-gray-200 pt-4 pb-4">
+            <Links />
+          </div>
+        )}
       </div>
-      <div className="navbar-center hidden lg:flex">
-        <ul className="menu menu-horizontal px-1">
-          <Links></Links>
-        </ul>
-      </div>
-      <div className="navbar-end gap-2">
-        <NavLink
-          to="/login"
-          className="btn flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-        >
-          <LogIn size={18} />
-          <span>SignIn</span>
-        </NavLink>
-      </div>
-    </div>
+    </nav>
   );
 };
 

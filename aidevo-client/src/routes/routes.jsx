@@ -6,8 +6,9 @@ import Blog from "../pages/public/Blog";
 import Organization from "../pages/public/Organization";
 import About from "../pages/public/About";
 import Error from "../components/common/Error";
-import Login from '../pages/auth/Login';
-import Register from '../pages/auth/Register';
+import Login from '../pages/auth/SignIn';
+import SignUp from "../pages/auth/SignUp";
+import SignIn from "../pages/auth/SignIn";
 
 export const router = createBrowserRouter([
   {
@@ -22,7 +23,7 @@ export const router = createBrowserRouter([
             path:'dashboard' , element: <Dashboard/>
         },
         {
-            path: 'blog' , element: <Blog/>
+            path: 'events' , element: <Blog/>
         },
         {
             path: 'organization' , element: <Organization/>
@@ -31,10 +32,10 @@ export const router = createBrowserRouter([
             path: 'about' , element: <About/>
         },
         {
-            path: 'login', element: <Login/>
+            path: 'signin', element: <SignIn/>
         },
         {
-            path: 'register', element: <Register/>
+            path: 'signup', element: <SignUp/>
         }
     ]
   },
