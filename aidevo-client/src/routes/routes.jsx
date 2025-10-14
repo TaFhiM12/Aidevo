@@ -9,6 +9,7 @@ import Error from "../components/common/Error";
 import Login from '../pages/auth/SignIn';
 import SignUp from "../pages/auth/SignUp";
 import SignIn from "../pages/auth/SignIn";
+import OrganizationDashboard from "../pages/dashboard/OrganizationDashboard";
 
 export const router = createBrowserRouter([
   {
@@ -20,7 +21,7 @@ export const router = createBrowserRouter([
             index: true, element: <Home/>
         },
         {
-            path:'dashboard' , element: <Dashboard/>
+            path:'dashboard' , element: <OrganizationDashboard/>
         },
         {
             path: 'events' , element: <Blog/>
@@ -39,4 +40,13 @@ export const router = createBrowserRouter([
         }
     ]
   },
+  {
+    path: 'dashboard',
+    element: <Dashboard/>,
+    children: [
+        {
+            index: true, element: <div>Organization</div>
+        }
+    ]
+  }
 ]);
