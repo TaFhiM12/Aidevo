@@ -10,6 +10,8 @@ import Login from '../pages/auth/SignIn';
 import SignUp from "../pages/auth/SignUp";
 import SignIn from "../pages/auth/SignIn";
 import OrganizationDashboard from "../pages/dashboard/OrganizationDashboard";
+import EventCreation from "../pages/dashboard/Organization/EventCreation";
+import OrganizationProfile from "../pages/dashboard/Organization/OrganizationProfile";
 
 export const router = createBrowserRouter([
   {
@@ -46,6 +48,12 @@ export const router = createBrowserRouter([
     children: [
         {
             index: true, element: <div>Organization</div>
+        },
+        {
+            path:'create-event' , element: <EventCreation/>
+        },
+        {
+            path: 'profile', element: <OrganizationProfile/>
         }
     ]
   }
