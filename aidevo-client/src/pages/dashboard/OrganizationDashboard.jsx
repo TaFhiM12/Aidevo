@@ -1,24 +1,30 @@
 import React, { useState } from "react";
-import { Outlet, NavLink} from "react-router";
+import { Outlet, NavLink, useNavigate} from "react-router";
 import {
   User,
   Menu,
   X,
-  LogOut,
+  LogOut
   
 } from "lucide-react";
 import Logo from "../../components/common/Logo";
 import { navigation } from "../../components/common/SidebarLinks";
+import useAuth from "../../hooks/useAuth";
 
 const OrganizationDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-//   const navigate = useNavigate();
-
-  
+  const { user, logOut } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-    console.log("Logging out...");
-    // navigate('/login');
+    logOut()
+      .then(() => {
+        alert("Logged out successfully");
+        navigate("/signin");
+      })
+      .catch((error) => {
+        console.error("Error logging out:", error);
+      });
   };
 
   return (
@@ -125,7 +131,7 @@ const OrganizationDashboard = () => {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm font-semibold text-slate-800">
-                    Organization
+                    {user?.displayName || user?.email}
                   </p>
                   <p className="text-xs text-slate-500">Administrator</p>
                 </div>

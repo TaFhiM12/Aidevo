@@ -1,9 +1,12 @@
-import React, { useState } from "react";
-import { Mail, Lock, LogIn, Eye, EyeOff, User, Building2, Smartphone } from "lucide-react";
-import { Link } from "react-router";
+import React, {  useState } from "react";
+import { Mail, Lock, LogIn, Eye, EyeOff, User, Building2 } from "lucide-react";
+import { Link, useNavigate } from "react-router";
 import { motion } from "framer-motion";
+import useAuth from '../../hooks/useAuth';
 
 const SignIn = () => {
+
+  const {signInUser} = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -13,59 +16,27 @@ const SignIn = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Sign In data:", formData);
+    try {
+      await signInUser(formData.email, formData.password);
+      // Redirect based on user type
+      if (formData.userType === "student") {
+        navigate("/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      console.error("Error signing in:", error);
+      alert("Failed to sign in. Please check your credentials and try again.");
+    } finally {
       setIsLoading(false);
-      // TODO: Add backend login logic later
-    }, 1500);
-  };
+    }
 
-  const InputField = ({ label, icon: Icon, type, name, value, onChange, placeholder, required = true }) => (
-    <div className="space-y-2">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Icon className="h-5 w-5 text-gray-400" />
-        </div>
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          placeholder={placeholder}
-          className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#4bbeff] focus:border-[#4bbeff] transition-all duration-200 bg-white placeholder-gray-400"
-        />
-        {name === 'password' && (
-          <button
-            type="button"
-            className="absolute inset-y-0 right-0 pr-3 flex items-center"
-            onClick={() => setShowPassword(!showPassword)}
-          >
-            {showPassword ? (
-              <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-            ) : (
-              <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-            )}
-          </button>
-        )}
-      </div>
-    </div>
-  );
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 px-4 py-8 mt-8">
@@ -117,15 +88,22 @@ const SignIn = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email Field */}
-          <InputField
-            label="Email Address"
-            icon={Mail}
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="you@university.edu"
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Email Address</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Mail className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                required
+                placeholder="you@university.edu"
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#4bbeff] focus:border-[#4bbeff] transition-all duration-200 bg-white placeholder-gray-400"
+              />
+            </div>
+          </div>
 
           {/* Password Field */}
           <div className="space-y-2">
@@ -144,9 +122,8 @@ const SignIn = () => {
               </div>
               <input
                 type={showPassword ? "text" : "password"}
-                name="password"
                 value={formData.password}
-                onChange={handleChange}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                 required
                 placeholder="Enter your password"
                 className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#4bbeff] focus:border-[#4bbeff] transition-all duration-200 bg-white placeholder-gray-400"
@@ -165,14 +142,13 @@ const SignIn = () => {
             </div>
           </div>
 
-          {/* Remember Me & Forgot Password */}
+          {/* Remember Me */}
           <div className="flex items-center justify-between">
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
                 type="checkbox"
-                name="rememberMe"
                 checked={formData.rememberMe}
-                onChange={handleChange}
+                onChange={(e) => setFormData(prev => ({ ...prev, rememberMe: e.target.checked }))}
                 className="w-4 h-4 text-[#4bbeff] focus:ring-[#4bbeff] border-gray-300 rounded"
               />
               <span className="text-sm text-gray-700">Remember me</span>
@@ -199,9 +175,6 @@ const SignIn = () => {
               </>
             )}
           </motion.button>
-
-          {/* Demo Credentials */}
-         
         </form>
 
         {/* Sign Up Link */}
