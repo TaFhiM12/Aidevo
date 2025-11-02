@@ -2,16 +2,17 @@ import { createBrowserRouter } from "react-router";
 import RootLayout from "../root/RootLayout";
 import Home from "../pages/public/Home";
 import Dashboard from "../pages/public/Dashboard";
-import Blog from "../pages/public/Blog";
+import Blog from "../pages/public/Events";
 import Organization from "../pages/public/Organization";
 import About from "../pages/public/About";
 import Error from "../components/common/Error";
-import Login from '../pages/auth/SignIn';
 import SignUp from "../pages/auth/SignUp";
 import SignIn from "../pages/auth/SignIn";
 import OrganizationDashboard from "../pages/dashboard/OrganizationDashboard";
 import EventCreation from "../pages/dashboard/Organization/EventCreation";
 import OrganizationProfile from "../pages/dashboard/Organization/OrganizationProfile";
+import PrivateRoute from "./PrivateRoute";
+import EventDetails from "../pages/private/EventDetails";
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +30,11 @@ export const router = createBrowserRouter([
             path: 'events' , element: <Blog/>
         },
         {
+            path:'events/:id' , element: <PrivateRoute>
+                <EventDetails/>
+            </PrivateRoute>
+        },
+        {
             path: 'organization' , element: <Organization/>
         },
         {
@@ -44,7 +50,9 @@ export const router = createBrowserRouter([
   },
   {
     path: 'dashboard',
-    element: <Dashboard/>,
+    element: <PrivateRoute>
+        <Dashboard/>
+    </PrivateRoute>,
     children: [
         {
             index: true, element: <div>Organization</div>

@@ -1,36 +1,46 @@
-import React from "react";
-import CreateEventForm from "../../../components/forms/CreateEventForm";
+import axios from "axios";
+import Swal from "sweetalert2";
+import { uploadToCloudinary } from "../../../utils/uploadToCloudinary";
+import CreateEventForm from '../../../components/forms/CreateEventForm';
 
 const EventCreation = () => {
   const handleCreateEvent = async (formData) => {
     try {
-      const form = new FormData();
-      Object.keys(formData).forEach((key) => {
-        if (formData[key] !== null) form.append(key, formData[key]);
-      });
+      let imageUrl = "";
 
-      const res = await fetch("/api/events", {
-        method: "POST",
-        body: form,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`, 
-        },
-      });
+      if (formData.cover) {
+        imageUrl = await uploadToCloudinary(formData.cover);
+      }
 
-      if (!res.ok) throw new Error("Failed to create event");
+      const eventData = {
+        ...formData,
+        cover: imageUrl,
+      };
 
-      alert("🎉 Event created successfully!");
+      const res = await axios.post("http://localhost:3000/events", eventData);
+
+      if (res.data.success) {
+        Swal.fire({
+          title: "Event Created!",
+          text: "Your event has been successfully added.",
+          icon: "success",
+          confirmButtonColor: "#4bbeff",
+        });
+      }
     } catch (err) {
       console.error(err);
-      alert("❌ Error creating event. Please try again.");
+      Swal.fire({
+        title: "Error",
+        text: err.response?.data?.message || "Something went wrong",
+        icon: "error",
+        confirmButtonColor: "#ef4444",
+      });
     }
   };
 
   return (
     <div className="min-h-screen bg-base-200 pb-10 px-4">
-      <div className=" mx-auto">
-        
-
+      <div className="mx-auto">
         <CreateEventForm onSubmit={handleCreateEvent} />
       </div>
     </div>
