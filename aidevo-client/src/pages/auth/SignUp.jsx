@@ -25,7 +25,7 @@ export default function SignUp() {
     department: ""
   });
 
-  const { createUser, updateProfileUser } = useAuth();
+  const { createUser, updateProfileUser, setLoading: setAuthLoading } = useAuth();
   const navigate = useNavigate();
 
   const orgTypes = ["Club", "NGO", "Department", "Community", "Society", "Association"];
@@ -43,9 +43,11 @@ export default function SignUp() {
     }
 
     try {
+      // 1. Create user in Firebase
       const userCredential = await createUser(formData.email, formData.password);
       const user = userCredential.user;
 
+      // 2. Prepare user data for MongoDB
       const userData = {
         uid: user.uid,
         email: formData.email,
@@ -97,12 +99,15 @@ export default function SignUp() {
           : `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=4bbeff&color=fff`
       });
 
-      // 5. Success - redirect to appropriate page
+      // 5. Wait a moment for the database to update and user state to propagate
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 6. Success - redirect to appropriate page
       console.log("User created successfully:", userData);
       
       // Redirect based on role
       if (role === 'organization') {
-        navigate('/organization/profile');
+        navigate('/dashboard');
       } else {
         navigate('/dashboard');
       }
@@ -320,7 +325,7 @@ export default function SignUp() {
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="+1 (555) 123-4567"
+                        placeholder="+880 12389-45679"
                         className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder-gray-400"
                         disabled={loading}
                       />

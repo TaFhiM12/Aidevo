@@ -1,5 +1,5 @@
 import React from 'react';
-import OrganizationDashboard from '../dashboard/OrganizationDashboard';
+import OrganizationDashboard from '../dashboard/Organization/OrganizationDashboard';
 
 const Dashboard = () => {
     return (

@@ -1,18 +1,17 @@
 import { createBrowserRouter } from "react-router";
 import RootLayout from "../root/RootLayout";
 import Home from "../pages/public/Home";
-import Dashboard from "../pages/public/Dashboard";
 import Blog from "../pages/public/Events";
 import Organization from "../pages/public/Organization";
 import About from "../pages/public/About";
 import Error from "../components/common/Error";
 import SignUp from "../pages/auth/SignUp";
 import SignIn from "../pages/auth/SignIn";
-import OrganizationDashboard from "../pages/dashboard/OrganizationDashboard";
 import EventCreation from "../pages/dashboard/Organization/EventCreation";
-import OrganizationProfile from "../pages/dashboard/Organization/OrganizationProfile";
 import PrivateRoute from "./PrivateRoute";
 import EventDetails from "../pages/private/EventDetails";
+import CombinedDashboard from "../pages/dashboard/Dashboard";
+import OrganizationProfile from '../pages/dashboard/Organization/OrganizationProfile';
 
 export const router = createBrowserRouter([
   {
@@ -23,9 +22,9 @@ export const router = createBrowserRouter([
         {
             index: true, element: <Home/>
         },
-        {
-            path:'dashboard' , element: <OrganizationDashboard/>
-        },
+        // {
+        //     path:'dashboard' , element: <OrganizationDashboard/>
+        // },
         {
             path: 'events' , element: <Blog/>
         },
@@ -48,10 +47,14 @@ export const router = createBrowserRouter([
         }
     ]
   },
+//   {
+//     path: '/dashboard',
+//     element: <StudentDashboard/>
+//   }
   {
     path: 'dashboard',
     element: <PrivateRoute>
-        <Dashboard/>
+        <CombinedDashboard/>
     </PrivateRoute>,
     children: [
         {
