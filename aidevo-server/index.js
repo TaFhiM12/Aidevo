@@ -40,6 +40,16 @@ async function run() {
     const usersCollection = database.collection("users");
     const eventsCollection = database.collection("events");
 
+    //user role
+    app.get("/users/role/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await usersCollection.findOne({ email });
+      const userInfo = {
+        role: user.role,
+      };
+      res.send(userInfo);
+    });
+
     // Add new user
     app.post('/users', async (req, res) => {
       try {
