@@ -12,6 +12,21 @@ import PrivateRoute from "./PrivateRoute";
 import EventDetails from "../pages/private/EventDetails";
 import CombinedDashboard from "../pages/dashboard/Dashboard";
 import OrganizationProfile from '../pages/dashboard/Organization/OrganizationProfile';
+import MyOrganization from '../pages/dashboard/student/MyOrganization';
+import MyApplications from '../pages/dashboard/student/MyApplications';
+import MyEnrolledEvents from '../pages/dashboard/student/MyEnrolledEvents';
+import MychatList from '../pages/dashboard/student/MychatList';
+import OrganizationEvents from '../pages/dashboard/Organization/OrganizationEvents';
+import OrganizationMembers from '../pages/dashboard/Organization/OrganizationMembers';
+import OrganizationApplicants from '../pages/dashboard/Organization/OrganizationApplicants';
+import OrganizationCommunication from '../pages/dashboard/Organization/OrganizationCommunication';
+import OrganizationAnalytics from '../pages/dashboard/Organization/OrganizationAnalytics';
+import OrganizationPayments from '../pages/dashboard/Organization/OrganizationPayments';
+import OrganizationsManagement from "../pages/dashboard/superAdmin/OrganizationsManagement";
+import UserManagement from "../pages/dashboard/superAdmin/UserManagement";
+import AllAnalytics from "../pages/dashboard/superAdmin/AllAnalytics";
+import Reports from "../pages/dashboard/superAdmin/Reports";
+import AdminProfile from "../pages/dashboard/superAdmin/AdminProfile";
 
 export const router = createBrowserRouter([
   {
@@ -22,9 +37,6 @@ export const router = createBrowserRouter([
         {
             index: true, element: <Home/>
         },
-        // {
-        //     path:'dashboard' , element: <OrganizationDashboard/>
-        // },
         {
             path: 'events' , element: <Blog/>
         },
@@ -47,10 +59,6 @@ export const router = createBrowserRouter([
         }
     ]
   },
-//   {
-//     path: '/dashboard',
-//     element: <StudentDashboard/>
-//   }
   {
     path: 'dashboard',
     element: <PrivateRoute>
@@ -58,13 +66,78 @@ export const router = createBrowserRouter([
     </PrivateRoute>,
     children: [
         {
-            index: true, element: <div>Organization</div>
+            index: true, element: <div>Dashboard Home</div>
+        },
+        // Student Routes
+        {
+            path: 'my-organizations' , element: <MyOrganization/>
         },
         {
-            path:'create-event' , element: <EventCreation/>
+            path: 'my-applications', element: <MyApplications/>
         },
         {
-            path: 'profile', element: <OrganizationProfile/>
+            path: 'my-events', element: <MyEnrolledEvents/>
+        },
+        {
+            path: 'my-chat', element: <MychatList/>
+        },
+        {
+            path: 'my-recommendations', element: <div>Student AI Recommendations</div>
+        },
+        {
+            path: 'student-profile', element: <div>Student Profile</div>
+        },
+        {
+            path: 'student-settings', element: <div>Student Settings</div>
+        },
+        
+        // Organization Routes
+        {
+            path:'org-create-event' , element: <EventCreation/>
+        },
+        {
+            path: 'org-profile', element: <OrganizationProfile/>
+        },
+        {
+            path: 'org-events', element: <OrganizationEvents/>
+        },
+        {
+            path: 'org-members', element: <OrganizationMembers/>
+        },
+        {
+            path: 'org-applications', element: <OrganizationApplicants/>
+        },
+        {
+            path: 'org-chat', element: <OrganizationCommunication/>
+        },
+        {
+            path: 'org-analytics', element: <OrganizationAnalytics/>
+        },
+        {
+            path: 'org-payments', element: <OrganizationPayments/>
+        },
+        {
+            path: 'org-settings', element: <div>Organization Settings</div>
+        },
+        
+        // Admin Routes
+        {
+            path: 'admin-organizations', element: <OrganizationsManagement/>
+        },
+        {
+            path: 'admin-users', element: <UserManagement/>
+        },
+        {
+            path: 'admin-analytics', element: <AllAnalytics/>
+        },
+        {
+            path: 'admin-reports', element: <Reports/>
+        },
+        {
+            path: 'admin-profile', element: <AdminProfile/>
+        },
+        {
+            path: 'admin-settings', element: <div>Admin Settings</div>
         }
     ]
   }

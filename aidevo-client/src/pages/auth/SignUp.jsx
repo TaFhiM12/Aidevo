@@ -8,6 +8,7 @@ export default function SignUp() {
   const [role, setRole] = useState("student");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+ 
   
   const [formData, setFormData] = useState({
     name: "",
@@ -77,7 +78,6 @@ export default function SignUp() {
         })
       };
 
-      // 3. Save user data to MongoDB
       const response = await fetch('http://localhost:3000/users', {
         method: 'POST',
         headers: {
@@ -91,7 +91,6 @@ export default function SignUp() {
         throw new Error(errorData.message || 'Failed to save user data');
       }
 
-      // 4. Update Firebase profile with display name
       await updateProfileUser({
         displayName: formData.name,
         photoURL: role === 'organization' 
@@ -99,24 +98,15 @@ export default function SignUp() {
           : `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=4bbeff&color=fff`
       });
 
-      // 5. Wait a moment for the database to update and user state to propagate
       await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 6. Success - redirect to appropriate page
-      console.log("User created successfully:", userData);
-      
-      // Redirect based on role
-      if (role === 'organization') {
-        navigate('/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      navigate('/dashboard');
 
     } catch (error) {
       console.error("Signup error:", error);
       setError(error.message || "Failed to create account. Please try again.");
     } finally {
       setLoading(false);
+      setAuthLoading(false);
     }
   };
 

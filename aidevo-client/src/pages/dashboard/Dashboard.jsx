@@ -8,7 +8,7 @@ import TopBar from './shared/TopBar';
 
 const CombinedDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, logOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { userInfo, loading: roleLoading, error, refetch } = useUserRole(); // Now using loading
@@ -65,6 +65,7 @@ const CombinedDashboard = () => {
         sidebarOpen={sidebarOpen} 
         userInfo={userInfo} 
         user={user}
+        logOut={logOut}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
