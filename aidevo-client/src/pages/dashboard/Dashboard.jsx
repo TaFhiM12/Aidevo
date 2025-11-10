@@ -5,15 +5,13 @@ import useUserRole from "../../hooks/useUserRole";
 import SideBar from "./shared/SideBar";
 import TopBar from './shared/TopBar';
 
-
 const CombinedDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, loading: authLoading, logOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { userInfo, loading: roleLoading, error, refetch } = useUserRole(); // Now using loading
+  const { userInfo, loading: roleLoading, error, refetch } = useUserRole();
 
-  // Show loading if either auth is loading or role is loading
   const isLoading = authLoading || roleLoading;
 
   if (isLoading) {
@@ -68,7 +66,12 @@ const CombinedDashboard = () => {
         logOut={logOut}
       />
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main content area with dynamic margin based on sidebar width */}
+      <div 
+        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${
+          sidebarOpen ? "ml-64" : "ml-20"
+        }`}
+      >
         <TopBar 
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}

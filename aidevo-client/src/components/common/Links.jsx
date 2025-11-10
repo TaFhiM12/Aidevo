@@ -1,15 +1,22 @@
 import { NavLink } from "react-router";
 import { Home, LayoutDashboard, FileText, Users, Info } from "lucide-react";
-
-const navItems = [
-  { to: '/', icon: Home, label: 'Home' },
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/events', icon: FileText, label: 'Events' },
-  { to: '/organization', icon: Users, label: 'Organization' },
-  { to: '/about', icon: Info, label: 'About' },
-];
+import useAuth from "../../hooks/useAuth";
 
 const Links = () => {
+  const { user } = useAuth();
+
+  const allNavItems = [
+    { to: '/', icon: Home, label: 'Home' },
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', requiresAuth: true },
+    { to: '/events', icon: FileText, label: 'Events' },
+    { to: '/organization', icon: Users, label: 'Organization' },
+    { to: '/about', icon: Info, label: 'About' },
+  ];
+
+  const navItems = allNavItems.filter(item => 
+    !item.requiresAuth || (item.requiresAuth && user)
+  );
+
   return (
     <div className="flex flex-col md:flex-row gap-2 md:gap-1">
       {navItems.map(({ to, icon: Icon, label }) => (

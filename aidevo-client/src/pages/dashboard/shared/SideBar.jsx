@@ -16,6 +16,7 @@ import {
   UserPlus,
   Plus,
 } from "lucide-react";
+import Logo from "../../../components/common/Logo";
 
 const SideBar = ({ sidebarOpen, userInfo, user, logOut }) => {
   const getNavItems = () => {
@@ -117,33 +118,32 @@ const SideBar = ({ sidebarOpen, userInfo, user, logOut }) => {
     <div
       className={`bg-white border-r border-gray-200 ${
         sidebarOpen ? "w-64" : "w-20"
-      } transition-all duration-300 flex flex-col`}
+      } transition-all duration-300 flex flex-col h-screen fixed left-0 top-0 z-40`}
     >
-      {/* Logo */}
-      <Link to="/">
-        <div className="p-4 border-b border-gray-200">
-          {sidebarOpen ? (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
+      {/* Logo - Fixed at top */}
+      <div className="flex-shrink-0">
+        <Link to="/">
+          <div className="p-4 border-b border-gray-200">
+            {sidebarOpen ? (
+              <div className="flex items-center">
+                <Logo/>
+                {/* <div>
+                  <p className="text-xs text-gray-500">{getRoleBadge()}</p>
+                </div> */}
               </div>
-              <div>
-                <span className="text-xl font-bold text-gray-800">Aidevo</span>
-                <p className="text-xs text-gray-500">{getRoleBadge()}</p>
+            ) : (
+              <div className="flex justify-center">
+                <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-            </div>
-          )}
-        </div>
-      </Link>
+            )}
+          </div>
+        </Link>
+      </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      {/* Navigation - Scrollable */}
+      <nav className="flex-1 overflow-y-auto py-4 px-4 space-y-2">
         {navItems.map((item) => {
           const Icon = item.icon;
 
@@ -152,54 +152,29 @@ const SideBar = ({ sidebarOpen, userInfo, user, logOut }) => {
               key={item.name}
               to={item.path}
               className={({ isActive }) =>
-                `w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors  ${
+                `w-full flex cursor-pointer items-center gap-4 px-3 py-3 rounded-lg text-base font-medium transition-colors ${
                   isActive
                     ? "bg-sky-50 text-sky-700 border border-sky-200"
                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`
               }
             >
-              <Icon className="w-5 h-5" />
-              {sidebarOpen && <span>{item.name}</span>}
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span className="truncate">{item.name}</span>}
             </NavLink>
           );
         })}
       </nav>
 
-      {/* User & Sign Out */}
-      <div className="p-4 border-t border-gray-200">
-        <div
-          className={`flex items-center gap-3 mb-3 ${
-            !sidebarOpen && "justify-center"
-          }`}
-        >
-          <img
-            src={
-              user?.photoURL ||
-              "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-            }
-            alt="Profile"
-            className="w-8 h-8 rounded-lg"
-          />
-          {sidebarOpen && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.displayName || userInfo?.name || "User"}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {userInfo.role}
-              </p>
-            </div>
-          )}
-        </div>
-
+      {/* Sign Out - Fixed at bottom */}
+      <div className="flex-shrink-0 p-4 border-t border-gray-200">
         <button
           onClick={handleSignOut}
-          className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors ${
+          className={`w-full cursor-pointer flex items-center gap-3 px-3 py-3 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors ${
             !sidebarOpen && "justify-center"
           }`}
         >
-          <LogOut className="w-5 h-5" />
+          <LogOut className="w-5 h-5 flex-shrink-0" />
           {sidebarOpen && <span>Sign Out</span>}
         </button>
       </div>

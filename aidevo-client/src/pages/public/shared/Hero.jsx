@@ -3,7 +3,7 @@ import { Users, Calendar, MessageCircle, Sparkles, ArrowRight, TrendingUp } from
 
 const Hero = () => {
     return (
-        <div className=" min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 overflow-hidden">
+        <div className=" min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 overflow-hidden my-10">
             {/* Animated Background Elements */}
             <div className="absolute inset-0 overflow-hidden">
                 <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
