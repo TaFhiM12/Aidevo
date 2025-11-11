@@ -66,34 +66,36 @@ export default function SignUp() {
   const campuses = ["Main Campus", "North Campus", "South Campus", "City Campus", "Online"];
   
   const departments = [
-    { name: "Computer Science", code: "cse" },
-    { name: "Electrical Engineering", code: "eee" },
-    { name: "Mechanical Engineering", code: "pme" },
-    { name: "Chemical Engineering", code: "che" },
-    { name: "Biomedical Engineering", code: "bme" },
-    { name: "Textile Engineering", code: "te" },
-    { name: "Food Engineering", code: "fmb" },
-    { name: "Fashion Engineering", code: "fe" },
-    { name: "Microbiology", code: "mb" },
-    { name: "Genetic Engineering", code: "gebt" },
-    { name: "Accounting", code: "ais" },
-    { name: "Development Studies", code: "cdm" },
-    { name: "Chemistry", code: "chem" },
-    { name: "Environmental Science", code: "est" },
-    { name: "Veterinary Medicine", code: "dvm" },
-    { name: "English", code: "eng" },
-    { name: "Marketing", code: "mkt" },
-    { name: "Physical Education", code: "pess" },
-    { name: "Mathematics", code: "math" },
-    { name: "Physics", code: "phy" },
-    { name: "Pharmacy", code: "phar" },
-    { name: "Finance", code: "fb" },
-    { name: "Textile Management", code: "nft" },
-    { name: "Management", code: "mgt" },
-    { name: "Pharmaceutical Technology", code: "ptr" },
-    { name: "Nursing", code: "nhs" },
-    { name: "Biochemistry", code: "bmb" }
-  ];
+  { name: "Computer Science and Engineering", code: "cse" },
+  { name: "Electrical and Electronic Engineering", code: "eee" },
+  { name: "Industrial and Production Engineering", code: "ipe" },
+  { name: "Petroleum and Mining Engineering", code: "pme" },
+  { name: "Chemical Engineering", code: "che" },
+  { name: "Biomedical Engineering", code: "bme" },
+  { name: "Textile Engineering", code: "te" },
+  { name: "Microbiology", code: "mb" },
+  { name: "Fisheries and Marine Bioscience", code: "fmb" },
+  { name: "Genetic Engineering and Biotechnology", code: "gebt" },
+  { name: "Pharmacy", code: "phar" },
+  { name: "Biochemistry and Molecular Biology", code: "bmb" },
+  { name: "Environmental Science and Technology", code: "est" },
+  { name: "Nutrition and Food Technology", code: "nft" },
+  { name: "Food Engineering", code: "fmb" },
+  { name: "Climate and Disaster Management", code: "cdm" },
+  { name: "Physical Education and Sports Science", code: "pess" },
+  { name: "Physiotherapy and Rehabilitation", code: "ptr" },
+  { name: "Nursing and Health Science", code: "nhs" },
+  { name: "English", code: "eng" },
+  { name: "Physics", code: "phy" },
+  { name: "Chemistry", code: "chem" },
+  { name: "Mathematics", code: "math" },
+  { name: "Applied Statistics and Data Science", code: "asd" },
+  { name: "Accounting and Information Systems", code: "ais" },
+  { name: "Management", code: "mgt" },
+  { name: "Finance and Banking", code: "fb" },
+  { name: "Marketing", code: "mkt" }
+];
+
 
   const sessions = Array.from({ length: 10 }, (_, i) => {
     const year = new Date().getFullYear() - i;
@@ -453,13 +455,13 @@ export default function SignUp() {
                 }`}>
                   <Icon size={20} />
                 </div>
-                <div>
-                  <h3 className={`font-semibold text-lg ${
+                <div className="">
+                  <h3 className={`font-semibold text-sm ${
                     role === value ? "text-blue-600" : "text-gray-700"
                   }`}>
                     {label}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">{description}</p>
+                  <p className="text-xs text-gray-500 mt-1">{description}</p>
                 </div>
               </div>
             </motion.button>
