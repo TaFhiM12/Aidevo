@@ -1,19 +1,51 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
-import { User, Building2, Mail, Lock, Calendar, Globe } from "lucide-react";
+import { 
+  User, 
+  Building2, 
+  Mail, 
+  Lock, 
+  Calendar, 
+  Globe, 
+  Upload, 
+  Camera,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  XCircle,
+  GraduationCap,
+  Shield,
+  Users,
+  Target
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 import useAuth from "../../hooks/useAuth";
+import { uploadToCloudinary } from "../../utils/uploadToCloudinary";
 
 export default function SignUp() {
   const [role, setRole] = useState("student");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
- 
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false
+  });
+  
+  const fileInputRef = useRef(null);
   
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
+    confirmPassword: "",
     orgName: "",
     orgType: "",
     tagline: "",
@@ -23,7 +55,8 @@ export default function SignUp() {
     campus: "",
     mission: "",
     studentId: "",
-    department: ""
+    department: "",
+    session: ""
   });
 
   const { createUser, updateProfileUser, setLoading: setAuthLoading } = useAuth();
@@ -31,19 +64,239 @@ export default function SignUp() {
 
   const orgTypes = ["Club", "NGO", "Department", "Community", "Society", "Association"];
   const campuses = ["Main Campus", "North Campus", "South Campus", "City Campus", "Online"];
+  
+  const departments = [
+    { name: "Computer Science", code: "cse" },
+    { name: "Electrical Engineering", code: "eee" },
+    { name: "Mechanical Engineering", code: "pme" },
+    { name: "Chemical Engineering", code: "che" },
+    { name: "Biomedical Engineering", code: "bme" },
+    { name: "Textile Engineering", code: "te" },
+    { name: "Food Engineering", code: "fmb" },
+    { name: "Fashion Engineering", code: "fe" },
+    { name: "Microbiology", code: "mb" },
+    { name: "Genetic Engineering", code: "gebt" },
+    { name: "Accounting", code: "ais" },
+    { name: "Development Studies", code: "cdm" },
+    { name: "Chemistry", code: "chem" },
+    { name: "Environmental Science", code: "est" },
+    { name: "Veterinary Medicine", code: "dvm" },
+    { name: "English", code: "eng" },
+    { name: "Marketing", code: "mkt" },
+    { name: "Physical Education", code: "pess" },
+    { name: "Mathematics", code: "math" },
+    { name: "Physics", code: "phy" },
+    { name: "Pharmacy", code: "phar" },
+    { name: "Finance", code: "fb" },
+    { name: "Textile Management", code: "nft" },
+    { name: "Management", code: "mgt" },
+    { name: "Pharmaceutical Technology", code: "ptr" },
+    { name: "Nursing", code: "nhs" },
+    { name: "Biochemistry", code: "bmb" }
+  ];
+
+  const sessions = Array.from({ length: 10 }, (_, i) => {
+    const year = new Date().getFullYear() - i;
+    return `${year}-${year + 1}`;
+  });
+
+  // Handle photo upload
+  const handlePhotoUpload = async (file) => {
+    try {
+      const url = await uploadToCloudinary(file);
+      if (!url) throw new Error("Failed to upload image");
+      return url;
+    } catch (error) {
+      console.error("Photo upload error:", error);
+      throw new Error("Failed to upload photo. Please try again.");
+    }
+  };
+
+  // Handle file selection
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError("Please select a valid image file (JPEG, PNG, etc.)");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setError("Image size should be less than 5MB");
+        return;
+      }
+
+      setPhotoFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoPreview(previewUrl);
+      setError("");
+    }
+  };
+
+  // Trigger file input click
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Professional password validation
+  const validatePassword = (password) => {
+    const strength = {
+      length: password.length >= 8,
+      uppercase: /(?=.*[A-Z])/.test(password),
+      lowercase: /(?=.*[a-z])/.test(password),
+      number: /(?=.*\d)/.test(password),
+      special: /(?=.*[@$!%*?&])/.test(password)
+    };
+    
+    setPasswordStrength(strength);
+    
+    const errors = [];
+    if (!strength.length) errors.push("At least 8 characters");
+    if (!strength.uppercase) errors.push("One uppercase letter");
+    if (!strength.lowercase) errors.push("One lowercase letter");
+    if (!strength.number) errors.push("One number");
+    if (!strength.special) errors.push("One special character (@$!%*?&)");
+    
+    return errors;
+  };
+
+  // Handle password change
+  const handlePasswordChange = (e) => {
+    const password = e.target.value;
+    setFormData(prev => ({ ...prev, password }));
+    validatePassword(password);
+  };
+
+  // Validate passwords match
+  const validatePasswordMatch = () => {
+    return formData.password === formData.confirmPassword;
+  };
+
+  // Validate student email format
+  const validateStudentEmail = (email) => {
+    const emailRegex = /^\d+\.[a-z]+@student\.just\.edu\.bd$/;
+    if (!emailRegex.test(email)) {
+      return "Email must be in format: roll.dept@student.just.edu.bd (e.g., 200142.cse@student.just.edu.bd)";
+    }
+    
+    const [localPart] = email.split('@');
+    const [roll, dept] = localPart.split('.');
+    
+    if (roll.length !== 6) {
+      return "Roll number must be exactly 6 digits";
+    }
+    
+    const validDepartments = departments.map(dept => dept.code);
+    if (!validDepartments.includes(dept)) {
+      return "Invalid department code. Please select from the list.";
+    }
+    
+    return null;
+  };
+
+  // Validate organization email
+  const validateOrganizationEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return "Please enter a valid email address";
+    }
+    return null;
+  };
+
+  // Calculate password strength score
+  const getPasswordStrength = () => {
+    const requirements = Object.values(passwordStrength);
+    const metRequirements = requirements.filter(Boolean).length;
+    return (metRequirements / requirements.length) * 100;
+  };
+
+  // Get password strength color
+  const getStrengthColor = () => {
+    const strength = getPasswordStrength();
+    if (strength <= 40) return "from-red-500 to-red-600";
+    if (strength <= 80) return "from-yellow-500 to-orange-500";
+    return "from-green-500 to-emerald-600";
+  };
+
+  // Get password strength text
+  const getStrengthText = () => {
+    const strength = getPasswordStrength();
+    if (strength <= 40) return "Weak";
+    if (strength <= 80) return "Medium";
+    return "Strong";
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long");
+    // Password validation
+    const passwordErrors = validatePassword(formData.password);
+    if (passwordErrors.length > 0) {
+      setError(`Password must contain: ${passwordErrors.join(", ")}`);
       setLoading(false);
       return;
     }
 
+    // Confirm password validation
+    if (!validatePasswordMatch()) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    // Email validation
+    const emailError = role === "student" 
+      ? validateStudentEmail(formData.email)
+      : validateOrganizationEmail(formData.email);
+    
+    if (emailError) {
+      setError(emailError);
+      setLoading(false);
+      return;
+    }
+
+    // Student-specific validation
+    if (role === "student") {
+      if (!formData.studentId) {
+        setError("Student ID is required");
+        setLoading(false);
+        return;
+      }
+      if (!formData.department) {
+        setError("Please select a department");
+        setLoading(false);
+        return;
+      }
+      if (!formData.session) {
+        setError("Please select admission session");
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Organization-specific validation
+    if (role === "organization") {
+      if (!formData.orgName.trim()) {
+        setError("Organization name is required");
+        setLoading(false);
+        return;
+      }
+      if (!formData.orgType) {
+        setError("Please select organization type");
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
+      let photoURL = null;
+      
+      // Upload photo if selected
+      if (photoFile) {
+        photoURL = await handlePhotoUpload(photoFile);
+      }
+
       // 1. Create user in Firebase
       const userCredential = await createUser(formData.email, formData.password);
       const user = userCredential.user;
@@ -54,6 +307,9 @@ export default function SignUp() {
         email: formData.email,
         name: formData.name,
         role: role,
+        photoURL: photoURL || (role === 'organization' 
+          ? `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.orgName)}&background=4bbeff&color=fff`
+          : `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=4bbeff&color=fff`),
         createdAt: new Date().toISOString(),
         ...(role === 'organization' ? {
           organization: {
@@ -66,36 +322,32 @@ export default function SignUp() {
             campus: formData.campus,
             mission: formData.mission,
             membershipCount: 0,
-            status: 'active'
+            status: 'active',
+            verified: false
           }
         } : {
           student: {
             studentId: formData.studentId,
             department: formData.department,
+            session: formData.session,
             year: new Date().getFullYear(),
-            status: 'active'
+            status: 'active',
+            verified: false
           }
         })
       };
 
-      const response = await fetch('http://localhost:3000/users', {
-        method: 'POST',
+      // 3. Save user data to MongoDB using axios
+      await axios.post('http://localhost:3000/users', userData, {
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
+        }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save user data');
-      }
-
+      // 4. Update Firebase profile
       await updateProfileUser({
         displayName: formData.name,
-        photoURL: role === 'organization' 
-          ? `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.orgName)}&background=4bbeff&color=fff`
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=4bbeff&color=fff`
+        photoURL: userData.photoURL
       });
 
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -103,75 +355,189 @@ export default function SignUp() {
 
     } catch (error) {
       console.error("Signup error:", error);
-      setError(error.message || "Failed to create account. Please try again.");
+      if (error.response?.data?.message) {
+        setError(error.response.data.message);
+      } else if (error.code === 'auth/email-already-in-use') {
+        setError("This email is already registered. Please use a different email or sign in.");
+      } else {
+        setError("Failed to create account. Please try again.");
+      }
     } finally {
       setLoading(false);
       setAuthLoading(false);
     }
   };
 
+  // Password requirement component
+  const PasswordRequirement = ({ met, text }) => (
+    <motion.div 
+      className="flex items-center gap-2"
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      {met ? (
+        <CheckCircle className="w-4 h-4 text-green-500" />
+      ) : (
+        <XCircle className="w-4 h-4 text-red-400" />
+      )}
+      <span className={`text-sm ${met ? 'text-green-600' : 'text-gray-500'}`}>
+        {text}
+      </span>
+    </motion.div>
+  );
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50/50 py-8 mt-10">
+    <div className="min-h-screen mt-10 flex items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 py-8 px-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-2xl bg-white rounded-2xl shadow-lg border border-gray-100 p-8"
+        className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-gray-100 p-8"
       >
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
-          <p className="text-gray-600 mt-2">Join our university community</p>
+        {/* Header with Gradient Border */}
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-1 rounded-2xl shadow-lg">
+            <div className="bg-white rounded-xl p-3">
+              <GraduationCap className="w-8 h-8 text-blue-500" />
+            </div>
+          </div>
         </div>
 
-        {/* Role Selection */}
-        <div className="flex bg-gray-100 rounded-xl p-2 mb-8">
-          <button
-            onClick={() => setRole("student")}
-            disabled={loading}
-            className={`flex-1 py-4 rounded-lg text-base font-semibold transition-all flex items-center justify-center space-x-2 ${
-              role === "student" 
-                ? "bg-white text-gray-900 shadow-sm border border-gray-200" 
-                : "text-gray-600 hover:text-gray-800"
-            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        <div className="text-center mb-8 pt-4">
+          <motion.h2
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-3"
           >
-            <User size={18} />
-            <span>Student</span>
-          </button>
-          <button
-            onClick={() => setRole("organization")}
-            disabled={loading}
-            className={`flex-1 py-4 rounded-lg text-base font-semibold transition-all flex items-center justify-center space-x-2 ${
-              role === "organization" 
-                ? "bg-white text-gray-900 shadow-sm border border-gray-200" 
-                : "text-gray-600 hover:text-gray-800"
-            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            Join Aidevo
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-gray-600 text-lg"
           >
-            <Building2 size={18} />
-            <span>Organization</span>
-          </button>
+            Start your campus journey with endless possibilities
+          </motion.p>
         </div>
+
+        {/* Role Selection - Card Style */}
+        <motion.div 
+          className="grid grid-cols-2 gap-4 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          {[
+            { value: "student", label: "Student", icon: User, description: "Join as a student" },
+            { value: "organization", label: "Organization", icon: Users, description: "Create organization" }
+          ].map(({ value, label, icon: Icon, description }) => (
+            <motion.button
+              key={value}
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
+              onClick={() => setRole(value)}
+              disabled={loading}
+              className={`p-6 rounded-2xl border-2 transition-all duration-300 text-left ${
+                role === value 
+                  ? "border-blue-500 bg-blue-50/50 shadow-lg" 
+                  : "border-gray-200 bg-white/50 hover:border-blue-300 hover:bg-blue-50/30"
+              } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-xl ${
+                  role === value 
+                    ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white" 
+                    : "bg-gray-100 text-gray-600"
+                }`}>
+                  <Icon size={20} />
+                </div>
+                <div>
+                  <h3 className={`font-semibold text-lg ${
+                    role === value ? "text-blue-600" : "text-gray-700"
+                  }`}>
+                    {label}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">{description}</p>
+                </div>
+              </div>
+            </motion.button>
+          ))}
+        </motion.div>
 
         {/* Error Message */}
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6"
-          >
-            <div className="flex items-center">
-              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              {error}
-            </div>
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -10, height: 0 }}
+              className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6"
+            >
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5" />
+                <span className="font-medium">{error}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Photo Upload Section */}
+          <motion.div 
+            className="flex justify-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <div className="relative group">
+              <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-100 border-4 border-white shadow-2xl overflow-hidden group-hover:shadow-3xl transition-all duration-500">
+                {photoPreview ? (
+                  <img 
+                    src={photoPreview} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                    <Camera className="w-10 h-10 text-gray-400" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 rounded-2xl"></div>
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                type="button"
+                onClick={handlePhotoClick}
+                className="absolute -bottom-2 -right-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-3 rounded-full shadow-xl cursor-pointer hover:shadow-2xl transition-all duration-200 group"
+                disabled={loading}
+              >
+                <Upload className="w-5 h-5" />
+                <div className="absolute inset-0 bg-white/20 rounded-full scale-0 group-hover:scale-100 transition-transform duration-200"></div>
+              </motion.button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                disabled={loading}
+              />
+            </div>
+          </motion.div>
+
           {/* Common Fields */}
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
+            <motion.div 
+              className="space-y-2"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6 }}
+            >
               <label className="text-sm font-medium text-gray-700">
-                {role === 'organization' ? 'Contact Person Name' : 'Full Name'} *
+                {role === 'organization' ? 'Contact Person Name *' : 'Full Name *'}
               </label>
               <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                 <User className="text-gray-400 mr-3" size={18} />
@@ -185,9 +551,14 @@ export default function SignUp() {
                   required
                 />
               </div>
-            </div>
+            </motion.div>
 
-            <div className="space-y-2">
+            <motion.div 
+              className="space-y-2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.7 }}
+            >
               <label className="text-sm font-medium text-gray-700">Email Address *</label>
               <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                 <Mail className="text-gray-400 mr-3" size={18} />
@@ -195,30 +566,131 @@ export default function SignUp() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="your.email@university.edu"
+                  placeholder={
+                    role === 'organization' 
+                      ? "contact@organization.edu" 
+                      : "200142.cse@student.just.edu.bd"
+                  }
                   className="w-full outline-none text-gray-700 placeholder-gray-400"
                   disabled={loading}
                   required
                 />
               </div>
-            </div>
+              {role === 'student' && (
+                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                  <Target className="w-3 h-3" />
+                  Format: roll.dept@student.just.edu.bd
+                </p>
+              )}
+            </motion.div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Password *</label>
-            <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-              <Lock className="text-gray-400 mr-3" size={18} />
-              <input 
-                type="password" 
-                value={formData.password}
-                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                placeholder="Create a strong password (min. 6 characters)"
-                className="w-full outline-none text-gray-700 placeholder-gray-400"
-                disabled={loading}
-                required
-              />
-            </div>
+          {/* Password Fields */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <motion.div 
+              className="space-y-3"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <label className="text-sm font-medium text-gray-700">Password *</label>
+              <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                <Lock className="text-gray-400 mr-3" size={18} />
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={formData.password}
+                  onChange={handlePasswordChange}
+                  placeholder="Create a strong password"
+                  className="w-full outline-none text-gray-700 placeholder-gray-400 bg-transparent"
+                  disabled={loading}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  disabled={loading}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              className="space-y-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9 }}
+            >
+              <label className="text-sm font-medium text-gray-700">Confirm Password *</label>
+              <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                <Lock className="text-gray-400 mr-3" size={18} />
+                <input 
+                  type={showConfirmPassword ? "text" : "password"} 
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  placeholder="Confirm your password"
+                  className="w-full outline-none text-gray-700 placeholder-gray-400 bg-transparent"
+                  disabled={loading}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  disabled={loading}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {formData.confirmPassword && (
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={`text-sm font-medium ${
+                    validatePasswordMatch() ? 'text-green-600' : 'text-red-600'
+                  }`}
+                >
+                  {validatePasswordMatch() ? '✓ Passwords match' : '✗ Passwords do not match'}
+                </motion.p>
+              )}
+            </motion.div>
           </div>
+          
+          {/* Password Strength Meter */}
+          {formData.password && (
+            <motion.div 
+              className="space-y-3 p-6 bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl border border-blue-100"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Password strength:</span>
+                <span className={`text-sm font-medium ${
+                  getPasswordStrength() <= 40 ? 'text-red-600' :
+                  getPasswordStrength() <= 80 ? 'text-yellow-600' : 'text-green-600'
+                }`}>
+                  {getStrengthText()}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                <motion.div 
+                  className={`h-2 rounded-full bg-gradient-to-r ${getStrengthColor()} shadow-inner`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${getPasswordStrength()}%` }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                ></motion.div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                <PasswordRequirement met={passwordStrength.length} text="At least 8 characters" />
+                <PasswordRequirement met={passwordStrength.uppercase} text="One uppercase letter" />
+                <PasswordRequirement met={passwordStrength.lowercase} text="One lowercase letter" />
+                <PasswordRequirement met={passwordStrength.number} text="One number" />
+                <PasswordRequirement met={passwordStrength.special} text="One special character" />
+              </div>
+            </motion.div>
+          )}
 
           {/* Dynamic Fields */}
           <AnimatePresence mode="wait">
@@ -349,28 +821,55 @@ export default function SignUp() {
                   </div>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Student ID</label>
-                    <input
-                      type="text"
-                      value={formData.studentId}
-                      onChange={(e) => setFormData(prev => ({ ...prev, studentId: e.target.value }))}
-                      placeholder="STU-2024-001"
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder-gray-400"
-                      disabled={loading}
-                    />
+                <div className="space-y-6">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Student ID *</label>
+                      <input
+                        type="text"
+                        value={formData.studentId}
+                        onChange={(e) => setFormData(prev => ({ ...prev, studentId: e.target.value }))}
+                        placeholder="200142"
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder-gray-400"
+                        disabled={loading}
+                        required
+                      />
+                      <p className="text-xs text-gray-500">Your 6-digit student ID</p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Session *</label>
+                      <select
+                        value={formData.session}
+                        onChange={(e) => setFormData(prev => ({ ...prev, session: e.target.value }))}
+                        disabled={loading}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                        required
+                      >
+                        <option value="">Select Session</option>
+                        {sessions.map(session => (
+                          <option key={session} value={session}>{session}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Department</label>
-                    <input
-                      type="text"
+                    <label className="text-sm font-medium text-gray-700">Department *</label>
+                    <select
                       value={formData.department}
                       onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                      placeholder="Computer Science"
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder-gray-400"
                       disabled={loading}
-                    />
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                      required
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map(dept => (
+                        <option key={dept.code} value={dept.code}>
+                          {dept.name} ({dept.code})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               )}
@@ -383,29 +882,51 @@ export default function SignUp() {
             whileTap={{ scale: loading ? 1 : 0.98 }}
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-400 disabled:to-gray-500 text-white py-4 rounded-xl font-semibold text-lg transition-all shadow-lg hover:shadow-xl disabled:shadow-none flex items-center justify-center gap-3"
+            className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 disabled:from-gray-400 disabled:to-gray-500 text-white py-5 rounded-2xl font-bold text-lg transition-all duration-300 shadow-xl hover:shadow-2xl disabled:shadow-none flex items-center justify-center gap-3 group relative overflow-hidden"
           >
+            <div className="absolute inset-0 bg-white/20 transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
             {loading ? (
               <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
                 <span>Creating Account...</span>
               </>
             ) : (
-              <span>Create {role === 'organization' ? 'Organization' : 'Student'} Account</span>
+              <>
+                <GraduationCap className="w-6 h-6" />
+                <span>Create {role === 'organization' ? 'Organization' : 'Student'} Account</span>
+              </>
             )}
           </motion.button>
         </form>
 
-        <p className="text-center text-gray-600 mt-6">
-          Already have an account?{" "}
-          <button
-            onClick={() => navigate("/signin")}
-            disabled={loading}
-            className="text-blue-500 hover:text-blue-600 font-semibold transition-colors disabled:opacity-50"
-          >
-            Sign In
-          </button>
-        </p>
+        <motion.div 
+          className="text-center mt-8 pt-6 border-t border-gray-200"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+        >
+          <p className="text-gray-600">
+            Already have an account?{" "}
+            <button
+              onClick={() => navigate("/signin")}
+              disabled={loading}
+              className="text-blue-500 hover:text-blue-600 font-semibold transition-colors disabled:opacity-50 inline-flex items-center gap-1 group"
+            >
+              Sign In
+              <motion.svg 
+                className="w-4 h-4" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+                initial={{ x: 0 }}
+                whileHover={{ x: 3 }}
+                transition={{ duration: 0.2 }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </motion.svg>
+            </button>
+          </p>
+        </motion.div>
       </motion.div>
     </div>
   );
