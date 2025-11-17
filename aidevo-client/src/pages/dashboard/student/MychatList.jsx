@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Search, 
   MessageCircle, 
@@ -26,24 +26,86 @@ const MychatList = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [organizations, setOrganizations] = useState([]);
-  const [myOrganizations, setMyOrganizations] = useState([]); // Organizations student is member of
+  const [myOrganizations, setMyOrganizations] = useState([]);
   const [showNewChat, setShowNewChat] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileView, setMobileView] = useState('sidebar');
-  const [activeTab, setActiveTab] = useState('chats'); // 'chats' or 'my-organizations'
+  const [activeTab, setActiveTab] = useState('chats');
+  const [socketConnected, setSocketConnected] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const socket = socketService.getSocket();
+  // Use useCallback for stable function references
+  const handleNewMessage = useCallback((message) => {
+    if (selectedConversation && message.conversationId === selectedConversation._id) {
+      setMessages(prev => [...prev, message]);
+      
+      setConversations(prev => 
+        prev.map(conv => 
+          conv._id === message.conversationId 
+            ? { 
+                ...conv, 
+                lastMessage: message.text,
+                lastMessageTime: message.timestamp,
+                unreadCount: conv._id === selectedConversation._id ? 0 : conv.unreadCount + 1
+              }
+            : conv
+        )
+      );
+    } else {
+      setConversations(prev => 
+        prev.map(conv => 
+          conv._id === message.conversationId 
+            ? { ...conv, unreadCount: (conv.unreadCount || 0) + 1 }
+            : conv
+        )
+      );
+    }
+  }, [selectedConversation]);
+
+  const handleMessagesRead = useCallback((data) => {
+    // Handle when messages are marked as read
+  }, []);
 
   useEffect(() => {
-    socketService.connect();
+    // Connect to socket
+    const socket = socketService.connect();
     
+    // Set up connection status listeners
+    socket.on('connect', () => {
+      console.log('✅ Socket connected');
+      setSocketConnected(true);
+      
+      // Re-join conversation if one was selected before refresh
+      if (selectedConversation) {
+        socket.emit('join_conversation', selectedConversation._id);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('❌ Socket disconnected');
+      setSocketConnected(false);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setSocketConnected(false);
+    });
+
+    // Your existing socket listeners
+    socket.on('receive_message', handleNewMessage);
+    socket.on('messages_read', handleMessagesRead);
+
     return () => {
-      socketService.disconnect();
+      // Clean up all listeners
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
+      socket.off('receive_message', handleNewMessage);
+      socket.off('messages_read', handleMessagesRead);
     };
-  }, []);
+  }, [handleNewMessage, handleMessagesRead, selectedConversation]); // Add dependencies
 
   useEffect(() => {
     if (user) {
@@ -62,18 +124,6 @@ const MychatList = () => {
       }
     }
   }, [selectedConversation]);
-
-  useEffect(() => {
-    if (socket) {
-      socket.on('receive_message', handleNewMessage);
-      socket.on('messages_read', handleMessagesRead);
-
-      return () => {
-        socket.off('receive_message', handleNewMessage);
-        socket.off('messages_read', handleMessagesRead);
-      };
-    }
-  }, [socket, selectedConversation]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -103,15 +153,10 @@ const MychatList = () => {
 
   const fetchMyOrganizations = async () => {
     try {
-      console.log('Fetching organizations for student:', user.email);
-      
-      // Get student MongoDB _id first
       const studentResponse = await axios.get(`http://localhost:3000/users/uid/${user.uid}`);
       const studentId = studentResponse.data.user._id;
       
-      // Fetch organizations where this student is a member
       const response = await axios.get(`http://localhost:3000/students/${studentId}/organizations`);
-      console.log('My organizations fetched:', response.data.organizations);
       setMyOrganizations(response.data.organizations);
     } catch (error) {
       console.error('Error fetching my organizations:', error);
@@ -124,6 +169,7 @@ const MychatList = () => {
       const response = await axios.get(`http://localhost:3000/conversations/${conversationId}/messages`);
       setMessages(response.data.messages);
       
+      const socket = socketService.getSocket();
       if (socket && conversationId) {
         socket.emit('mark_as_read', {
           conversationId,
@@ -136,40 +182,10 @@ const MychatList = () => {
   };
 
   const joinConversation = (conversationId) => {
+    const socket = socketService.getSocket();
     if (socket) {
       socket.emit('join_conversation', conversationId);
     }
-  };
-
-  const handleNewMessage = (message) => {
-    if (selectedConversation && message.conversationId === selectedConversation._id) {
-      setMessages(prev => [...prev, message]);
-      
-      setConversations(prev => 
-        prev.map(conv => 
-          conv._id === message.conversationId 
-            ? { 
-                ...conv, 
-                lastMessage: message.text,
-                lastMessageTime: message.timestamp,
-                unreadCount: conv._id === selectedConversation._id ? 0 : conv.unreadCount + 1
-              }
-            : conv
-        )
-      );
-    } else {
-      setConversations(prev => 
-        prev.map(conv => 
-          conv._id === message.conversationId 
-            ? { ...conv, unreadCount: (conv.unreadCount || 0) + 1 }
-            : conv
-        )
-      );
-    }
-  };
-
-  const handleMessagesRead = (data) => {
-    // Handle when messages are marked as read
   };
 
   const startNewChat = async (organization) => {
@@ -201,6 +217,7 @@ const MychatList = () => {
 
   const sendMessage = async (e) => {
     e.preventDefault();
+    const socket = socketService.getSocket();
     if (!newMessage.trim() || !selectedConversation || !socket) return;
 
     const studentResponse = await axios.get(`http://localhost:3000/users/uid/${user.uid}`);
@@ -218,6 +235,7 @@ const MychatList = () => {
     socket.emit('send_message', messageData);
     setNewMessage('');
   };
+
 
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString('en-US', {
@@ -269,7 +287,16 @@ const MychatList = () => {
             <div className="flex items-center justify-between">
               {sidebarOpen ? (
                 <>
-                  <h2 className="text-xl font-bold text-gray-900">Messages</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-gray-900">Messages</h2>
+                    {/* ADD CONNECTION STATUS INDICATOR */}
+                    <div className="flex items-center gap-1 text-xs">
+                      <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className={socketConnected ? 'text-green-600' : 'text-red-600'}>
+                        {socketConnected ? '' : 'Offline'}
+                      </span>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -630,6 +657,13 @@ const MychatList = () => {
                     </div>
                   </div>
                   <div className="text-right">
+                    {/* ADD CONNECTION STATUS INDICATOR */}
+                    <div className="flex items-center gap-2 text-xs justify-end mb-1">
+                      <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className={socketConnected ? 'text-green-600' : 'text-red-600'}>
+                        {socketConnected ? 'Connected' : 'Disconnected'}
+                      </span>
+                    </div>
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <p className="text-xs text-green-600 mt-1">Online</p>
                   </div>
@@ -690,7 +724,7 @@ const MychatList = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    disabled={!newMessage.trim()}
+                    disabled={!newMessage.trim() || !socketConnected}
                     className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                   >
                     <Send className="w-4 h-4" />

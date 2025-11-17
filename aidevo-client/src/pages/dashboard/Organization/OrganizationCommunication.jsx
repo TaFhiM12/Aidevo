@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Search, 
   MessageCircle, 
@@ -36,17 +36,12 @@ const OrganizationCommunication = () => {
   const [activeTab, setActiveTab] = useState('chats');
   const [organizationId, setOrganizationId] = useState(null);
   const [showNewChat, setShowNewChat] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false); // ADD THIS
   const messagesEndRef = useRef(null);
 
   const socket = socketService.getSocket();
 
-  useEffect(() => {
-    socketService.connect();
-    
-    return () => {
-      socketService.disconnect();
-    };
-  }, []);
+  
 
   useEffect(() => {
     if (user) {
@@ -72,18 +67,6 @@ const OrganizationCommunication = () => {
     }
   }, [selectedConversation]);
 
-  useEffect(() => {
-    if (socket) {
-      socket.on('receive_message', handleNewMessage);
-      socket.on('messages_read', handleMessagesRead);
-
-      return () => {
-        socket.off('receive_message', handleNewMessage);
-        socket.off('messages_read', handleMessagesRead);
-      };
-    }
-  }, [socket, selectedConversation]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -95,11 +78,9 @@ const OrganizationCommunication = () => {
   // Get organization MongoDB ID first
   const fetchOrganizationId = async () => {
     try {
-      // console.log('Fetching organization ID for:', user.email);
       const response = await axios.get(`http://localhost:3000/users/uid/${user.uid}`);
       if (response.data.success) {
         setOrganizationId(response.data.user._id);
-        // console.log('Organization ID:', response.data.user._id);
       }
     } catch (error) {
       console.error('Error fetching organization ID:', error);
@@ -128,11 +109,7 @@ const OrganizationCommunication = () => {
     try {
       if (!organizationId) return;
       
-      // console.log('Fetching members for organization ID:', organizationId);
-      
-      // Use the organization ID to fetch members
       const response = await axios.get(`http://localhost:3000/organizations/email/${user.email}/members`);
-      // console.log('Members fetched:', response.data.members);
       setOrganizationMembers(response.data.members);
     } catch (error) {
       console.error('Error fetching organization members:', error);
@@ -162,7 +139,7 @@ const OrganizationCommunication = () => {
     }
   };
 
-  const handleNewMessage = (message) => {
+  const handleNewMessage = useCallback((message) => {
     if (selectedConversation && message.conversationId === selectedConversation._id) {
       setMessages(prev => [...prev, message]);
       
@@ -187,11 +164,50 @@ const OrganizationCommunication = () => {
         )
       );
     }
-  };
+  }, [selectedConversation]);
 
   const handleMessagesRead = (data) => {
     // Handle read receipts
   };
+
+  useEffect(() => {
+    // Connect to socket
+    const socket = socketService.connect();
+    
+    // Set up connection status listeners
+    socket.on('connect', () => {
+      console.log('✅ Socket connected');
+      setSocketConnected(true);
+      
+      // Re-join conversation if one was selected before refresh
+      if (selectedConversation) {
+        socket.emit('join_conversation', selectedConversation._id);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('❌ Socket disconnected');
+      setSocketConnected(false);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setSocketConnected(false);
+    });
+
+    // Your existing socket listeners
+    socket.on('receive_message', handleNewMessage);
+    socket.on('messages_read', handleMessagesRead);
+
+    return () => {
+      // Clean up all listeners
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
+      socket.off('receive_message', handleNewMessage);
+      socket.off('messages_read', handleMessagesRead);
+    };
+  }, [handleNewMessage, handleMessagesRead, selectedConversation]);
 
   const startNewChat = async (student) => {
     try {
@@ -301,7 +317,16 @@ const OrganizationCommunication = () => {
             <div className="flex items-center justify-between">
               {sidebarOpen ? (
                 <>
-                  <h2 className="text-xl font-bold text-gray-900">Communication</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-gray-900">Communication</h2>
+                    {/* ADD CONNECTION STATUS INDICATOR */}
+                    <div className="flex items-center gap-1 text-xs">
+                      <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className={socketConnected ? 'text-green-600' : 'text-red-600'}>
+                        {socketConnected ? '' : 'Offline'}
+                      </span>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
@@ -696,7 +721,7 @@ const OrganizationCommunication = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    disabled={!newMessage.trim()}
+                    disabled={!newMessage.trim() || !socketConnected}
                     className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                   >
                     <Send className="w-4 h-4" />
