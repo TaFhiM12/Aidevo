@@ -20,6 +20,7 @@ import axios from 'axios';
 import ApplicationModal from '../../components/layouts/ApplicationModal';
 import useAuth from '../../hooks/useAuth';
 import useUserRole from '../../hooks/useUserRole';
+import Loading from '../../components/common/Loading';
 
 const Organization = () => {
   const { user } = useAuth();
@@ -256,18 +257,11 @@ const Organization = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading organizations...</p>
-        </div>
-      </div>
-    );
+    return <Loading/>
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 py-8 px-4">
+    <div className="min-h-screen  py-8 px-4 mt-14">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div

@@ -4,26 +4,18 @@ import useAuth from "../../hooks/useAuth";
 import useUserRole from "../../hooks/useUserRole";
 import SideBar from "./shared/SideBar";
 import TopBar from './shared/TopBar';
+import Loading from "../../components/common/Loading";
 
 const CombinedDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, loading: authLoading, logOut } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
   const { userInfo, loading: roleLoading, error, refetch } = useUserRole();
 
   const isLoading = authLoading || roleLoading;
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-          <p className="text-sm text-gray-500 mt-2">Setting up your experience</p>
-        </div>
-      </div>
-    );
+    return <Loading/>
   }
 
   if (error || !userInfo) {

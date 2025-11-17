@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Mail, 
   Lock, 
@@ -11,11 +11,13 @@ import {
   CheckCircle2,
   Shield,
   Users,
-  Target
+  Target,
+  Info
 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import useAuth from '../../hooks/useAuth';
+import toast from 'react-hot-toast';
 
 const SignIn = () => {
   const { signInUser } = useAuth();
@@ -31,6 +33,134 @@ const SignIn = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
+  const validationTimeout = useRef(null);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (validationTimeout.current) {
+        clearTimeout(validationTimeout.current);
+      }
+    };
+  }, []);
+
+  // Demo credentials helper
+  const showDemoCredentials = () => {
+    if (formData.userType === "student") {
+      toast.success(
+        <div className="text-center">
+          <p className="font-semibold">Student Demo Format:</p>
+          <p className="text-sm mt-1">200142.cse@student.just.edu.bd</p>
+          <p className="text-xs text-gray-600 mt-1">Roll.Department@student.just.edu.bd</p>
+        </div>,
+        { 
+          duration: 5000,
+          icon: '🎓'
+        }
+      );
+    } else {
+      toast.success(
+        <div className="text-center">
+          <p className="font-semibold">Organization Demo Format:</p>
+          <p className="text-sm mt-1">contact@yourorg.edu.bd</p>
+          <p className="text-xs text-gray-600 mt-1">Use your organization email</p>
+        </div>,
+        { 
+          duration: 5000,
+          icon: '🏢'
+        }
+      );
+    }
+  };
+
+  // Real-time email validation with toast
+  const validateEmailInRealTime = (email) => {
+    if (!email) return;
+
+    if (formData.userType === "student") {
+      const studentEmailRegex = /^\d+\.[a-z]+@student\.just\.edu\.bd$/;
+      
+      // Clear previous timeout
+      if (validationTimeout.current) {
+        clearTimeout(validationTimeout.current);
+      }
+
+      // Set new timeout for validation
+      validationTimeout.current = setTimeout(() => {
+        if (!studentEmailRegex.test(email)) {
+          toast.error(
+            <div>
+              <p className="font-medium">Invalid Student Email Format</p>
+              <p className="text-sm mt-1">Required: roll.dept@student.just.edu.bd</p>
+              <p className="text-xs text-gray-300 mt-1">Example: 200142.cse@student.just.edu.bd</p>
+            </div>,
+            { 
+              duration: 4000,
+              id: 'email-validation' // Same ID to prevent multiple toasts
+            }
+          );
+        } else {
+          toast.success("✓ Valid student email format", { 
+            duration: 2000,
+            id: 'email-validation'
+          });
+        }
+      }, 1000);
+    }
+  };
+
+  const handleEmailChange = (e) => {
+    const email = e.target.value;
+    setFormData(prev => ({ ...prev, email }));
+    
+    if (error) setError("");
+    
+    // Real-time email validation
+    validateEmailInRealTime(email);
+  };
+
+  const handlePasswordChange = (e) => {
+    setFormData(prev => ({ ...prev, password: e.target.value }));
+    if (error) setError("");
+  };
+
+  const handleUserTypeChange = (newType) => {
+    setFormData(prev => ({ ...prev, userType: newType }));
+    setError("");
+    
+    // Show toast for user type change
+    toast.success(
+      <div className="flex items-center gap-2">
+        {newType === "student" ? (
+          <>
+            <User className="w-4 h-4" />
+            <span>Switched to Student Sign In</span>
+          </>
+        ) : (
+          <>
+            <Users className="w-4 h-4" />
+            <span>Switched to Organization Sign In</span>
+          </>
+        )}
+      </div>,
+      { duration: 2000 }
+    );
+
+    // Clear any existing email validation toasts
+    toast.dismiss('email-validation');
+  };
+
+  const handleRememberMeChange = (e) => {
+    const rememberMe = e.target.checked;
+    setFormData(prev => ({ ...prev, rememberMe }));
+    
+    if (rememberMe) {
+      toast.success("We'll remember you on this device", { 
+        duration: 2000,
+        icon: '🔐'
+      });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,9 +168,20 @@ const SignIn = () => {
     setError("");
     setSuccess("");
 
-    // Basic validation
+    // Clear any existing validation toasts
+    toast.dismiss('email-validation');
+
+    // Basic validation with toast
     if (!formData.email || !formData.password) {
-      setError("Please fill in all fields");
+      const errorMsg = "Please fill in all fields";
+      setError(errorMsg);
+      toast.error(
+        <div className="flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          <span>Please fill in all required fields</span>
+        </div>,
+        { duration: 3000 }
+      );
       setIsLoading(false);
       return;
     }
@@ -49,22 +190,75 @@ const SignIn = () => {
     if (formData.userType === "student") {
       const studentEmailRegex = /^\d+\.[a-z]+@student\.just\.edu\.bd$/;
       if (!studentEmailRegex.test(formData.email)) {
-        setError("Please use your student email: roll.dept@student.just.edu.bd");
+        const errorMsg = "Please use your student email: roll.dept@student.just.edu.bd";
+        setError(errorMsg);
+        toast.error(
+          <div>
+            <p className="font-medium">Invalid Student Email</p>
+            <p className="text-sm mt-1">Format: roll.dept@student.just.edu.bd</p>
+            <button 
+              onClick={showDemoCredentials}
+              className="text-xs text-cyan-300 underline mt-1 hover:text-cyan-200"
+            >
+              Show example format
+            </button>
+          </div>,
+          { duration: 4000 }
+        );
         setIsLoading(false);
         return;
       }
     }
 
     try {
+      // Show loading toast with user type context
+      const loadingToast = toast.loading(
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <span>
+            Signing in as {formData.userType === 'student' ? 'Student' : 'Organization'}...
+          </span>
+        </div>,
+        { duration: Infinity }
+      );
+
+      // Attempt sign in
       await signInUser(formData.email, formData.password);
+      
+      // Update loading toast to success
+      toast.success(
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="w-5 h-5" />
+          <div>
+            <p className="font-semibold">Welcome back!</p>
+            <p className="text-sm">
+              {formData.userType === 'student' ? 'Student' : 'Organization'} account verified
+            </p>
+          </div>
+        </div>,
+        { 
+          id: loadingToast,
+          duration: 3000 
+        }
+      );
+      
       setSuccess("Successfully signed in! Redirecting...");
       
-      // Store remember me preference
+      // Store remember me preference with toast feedback
       if (formData.rememberMe) {
         localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('userType', formData.userType);
+        toast.success("Remember me enabled for future sessions", { 
+          duration: 2000,
+          icon: '💾'
+        });
       } else {
         localStorage.removeItem('rememberMe');
+        localStorage.removeItem('userType');
       }
+      
+      // Show redirecting toast
+      toast.loading("Redirecting to dashboard...", { duration: 1000 });
       
       // Redirect after a brief delay
       setTimeout(() => {
@@ -74,40 +268,114 @@ const SignIn = () => {
     } catch (error) {
       console.error("Error signing in:", error);
       
-      // Handle specific Firebase auth errors
+      let errorMessage = "Failed to sign in. Please check your credentials and try again.";
+      let toastDuration = 4000;
+      
+      // Handle specific Firebase auth errors with detailed toasts
       switch (error.code) {
         case 'auth/invalid-email':
-          setError("Invalid email address format");
+          errorMessage = "Invalid email address format";
+          toast.error(
+            <div className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              <span>Please check your email format</span>
+            </div>,
+            { duration: toastDuration }
+          );
           break;
         case 'auth/user-not-found':
-          setError("No account found with this email");
+          errorMessage = "No account found with this email";
+          toast.error(
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4" />
+              <div>
+                <p className="font-medium">Account not found</p>
+                <p className="text-sm">Please check your email or create an account</p>
+              </div>
+            </div>,
+            { duration: toastDuration }
+          );
           break;
         case 'auth/wrong-password':
-          setError("Incorrect password. Please try again.");
+          errorMessage = "Incorrect password. Please try again.";
+          toast.error(
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              <div>
+                <p className="font-medium">Incorrect Password</p>
+                <p className="text-sm">Please check your password and try again</p>
+              </div>
+            </div>,
+            { duration: toastDuration }
+          );
           break;
         case 'auth/too-many-requests':
-          setError("Too many failed attempts. Please try again later.");
+          errorMessage = "Too many failed attempts. Please try again later.";
+          toast.error(
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              <div>
+                <p className="font-medium">Too Many Attempts</p>
+                <p className="text-sm">Account temporarily locked. Try again later.</p>
+              </div>
+            </div>,
+            { duration: 5000 }
+          );
           break;
         case 'auth/user-disabled':
-          setError("This account has been disabled. Please contact support.");
+          errorMessage = "This account has been disabled. Please contact support.";
+          toast.error(
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <div>
+                <p className="font-medium">Account Disabled</p>
+                <p className="text-sm">Please contact support for assistance</p>
+              </div>
+            </div>,
+            { duration: 5000 }
+          );
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = "Network error. Please check your connection.";
+          toast.error(
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <div>
+                <p className="font-medium">Network Error</p>
+                <p className="text-sm">Please check your internet connection</p>
+              </div>
+            </div>,
+            { duration: 4000 }
+          );
           break;
         default:
-          setError("Failed to sign in. Please check your credentials and try again.");
+          toast.error(
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <div>
+                <p className="font-medium">Sign In Failed</p>
+                <p className="text-sm">Please check your credentials</p>
+              </div>
+            </div>,
+            { duration: toastDuration }
+          );
       }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Clear error when user starts typing
-  const handleEmailChange = (e) => {
-    setFormData(prev => ({ ...prev, email: e.target.value }));
-    if (error) setError("");
+  // Handle forgot password with toast
+  const handleForgotPassword = () => {
+    toast.loading("Redirecting to password recovery...", { duration: 1500 });
+    // The Link component will handle the actual navigation
   };
 
-  const handlePasswordChange = (e) => {
-    setFormData(prev => ({ ...prev, password: e.target.value }));
-    if (error) setError("");
+  // Handle sign up navigation with toast
+  const handleSignUpNavigation = () => {
+    toast.loading("Redirecting to sign up...", { duration: 1000 });
   };
 
   return (
@@ -118,15 +386,6 @@ const SignIn = () => {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 w-full max-w-2xl relative"
       >
-        {/* Header with Gradient Border */}
-        {/* <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2"> */}
-          {/* <div className="bg-gradient-to-r from-blue-500 to-cyan-500 p-1 rounded-2xl shadow-lg">
-            <div className="bg-white rounded-xl p-3">
-              <LogIn className="w-8 h-8 text-blue-500" />
-            </div>
-          </div>
-        </div> */}
-
         {/* Header */}
         <div className="text-center mb-8 pt-4">
           <motion.h2
@@ -163,10 +422,7 @@ const SignIn = () => {
               type="button"
               whileHover={{ scale: isLoading ? 1 : 1.02 }}
               whileTap={{ scale: isLoading ? 1 : 0.98 }}
-              onClick={() => {
-                setFormData(prev => ({ ...prev, userType: value }));
-                setError("");
-              }}
+              onClick={() => handleUserTypeChange(value)}
               disabled={isLoading}
               className={`p-4 rounded-2xl border-2 transition-all duration-300 text-left ${
                 formData.userType === value 
@@ -257,10 +513,20 @@ const SignIn = () => {
               />
             </div>
             {formData.userType === "student" && (
-              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                <Target className="w-3 h-3" />
-                Format: roll.dept@student.just.edu.bd
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <Target className="w-3 h-3" />
+                  Format: roll.dept@student.just.edu.bd
+                </p>
+                <button
+                  type="button"
+                  onClick={showDemoCredentials}
+                  className="text-xs text-blue-500 hover:text-blue-600 font-medium flex items-center gap-1 transition-colors"
+                >
+                  <Info className="w-3 h-3" />
+                  See example
+                </button>
+              </div>
             )}
           </motion.div>
 
@@ -278,6 +544,7 @@ const SignIn = () => {
               </label>
               <Link
                 to="/forgot-password"
+                onClick={handleForgotPassword}
                 className="text-sm text-blue-500 hover:text-blue-600 font-medium transition-colors"
               >
                 Forgot password?
@@ -296,7 +563,12 @@ const SignIn = () => {
               <button
                 type="button"
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() => {
+                  setShowPassword(!showPassword);
+                  toast.success(showPassword ? "Password hidden" : "Password visible", { 
+                    duration: 1500 
+                  });
+                }}
                 disabled={isLoading}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -316,7 +588,7 @@ const SignIn = () => {
                 <input
                   type="checkbox"
                   checked={formData.rememberMe}
-                  onChange={(e) => setFormData(prev => ({ ...prev, rememberMe: e.target.checked }))}
+                  onChange={handleRememberMeChange}
                   className="w-5 h-5 text-blue-500 focus:ring-blue-500 border-gray-300 rounded-xl disabled:opacity-50 cursor-pointer transition-all duration-200"
                   disabled={isLoading}
                 />
@@ -363,6 +635,7 @@ const SignIn = () => {
             Don't have an account?{" "}
             <Link
               to="/signup"
+              onClick={handleSignUpNavigation}
               className="text-blue-500 hover:text-blue-600 font-semibold transition-colors disabled:opacity-50 inline-flex items-center gap-1 group"
             >
               Create account
@@ -388,9 +661,19 @@ const SignIn = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1 }}
         >
-          <p className="text-xs text-blue-700 text-center font-medium">
-            <span className="bg-blue-100 px-2 py-1 rounded-lg">Demo:</span> Use your registered email and password to sign in
-          </p>
+          <div className="text-center">
+            <p className="text-xs text-blue-700 font-medium mb-2">
+              <span className="bg-blue-100 px-2 py-1 rounded-lg">💡 Need help?</span>
+            </p>
+            <button
+              type="button"
+              onClick={showDemoCredentials}
+              className="text-xs text-blue-500 hover:text-blue-600 font-medium underline transition-colors flex items-center gap-1 mx-auto"
+            >
+              <Info className="w-3 h-3" />
+              Show email format examples
+            </button>
+          </div>
         </motion.div>
       </motion.div>
     </div>

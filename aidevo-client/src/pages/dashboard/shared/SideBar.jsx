@@ -17,6 +17,7 @@ import {
   Plus,
 } from "lucide-react";
 import Logo from "../../../components/common/Logo";
+import toast from "react-hot-toast";
 
 const SideBar = ({ sidebarOpen, userInfo, user, logOut }) => {
   const getNavItems = () => {
@@ -105,14 +106,29 @@ const SideBar = ({ sidebarOpen, userInfo, user, logOut }) => {
   };
 
   const handleSignOut = () => {
-    logOut()
-      .then(() => {
-        alert("Signed out successfully");
-      })
-      .catch((error) => {
-        console.error("Error signing out:", error);
+  const loadingToast = toast.loading('Securely signing you out...');
+
+  logOut()
+    .then(() => {
+      toast.success('Successfully signed out!', { 
+        id: loadingToast,
+        duration: 3000 
       });
-  };
+    })
+    .catch((error) => {
+      console.error("Error signing out:", error);
+      
+      let errorMessage = "Sign out failed. Please try again.";
+      if (error.code === 'auth/network-request-failed') {
+        errorMessage = "Network error. Check your connection.";
+      }
+      
+      toast.error(errorMessage, { 
+        id: loadingToast,
+        duration: 4000 
+      });
+    });
+};
 
   return (
     <div

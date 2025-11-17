@@ -1,13 +1,13 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router";
-import { 
-  User, 
-  Building2, 
-  Mail, 
-  Lock, 
-  Calendar, 
-  Globe, 
-  Upload, 
+import {
+  User,
+  Building2,
+  Mail,
+  Lock,
+  Calendar,
+  Globe,
+  Upload,
   Camera,
   Eye,
   EyeOff,
@@ -16,12 +16,13 @@ import {
   GraduationCap,
   Shield,
   Users,
-  Target
+  Target,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import useAuth from "../../hooks/useAuth";
 import { uploadToCloudinary } from "../../utils/uploadToCloudinary";
+import toast from "react-hot-toast";
 
 export default function SignUp() {
   const [role, setRole] = useState("student");
@@ -36,11 +37,11 @@ export default function SignUp() {
     uppercase: false,
     lowercase: false,
     number: false,
-    special: false
+    special: false,
   });
-  
+
   const fileInputRef = useRef(null);
-  
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -56,46 +57,62 @@ export default function SignUp() {
     mission: "",
     studentId: "",
     department: "",
-    session: ""
+    session: "",
   });
 
-  const { createUser, updateProfileUser, setLoading: setAuthLoading } = useAuth();
+  const {
+    createUser,
+    updateProfileUser,
+    setLoading: setAuthLoading,
+  } = useAuth();
   const navigate = useNavigate();
 
-  const orgTypes = ["Club", "NGO", "Department", "Community", "Society", "Association"];
-  const campuses = ["Main Campus", "North Campus", "South Campus", "City Campus", "Online"];
-  
-  const departments = [
-  { name: "Computer Science and Engineering", code: "cse" },
-  { name: "Electrical and Electronic Engineering", code: "eee" },
-  { name: "Industrial and Production Engineering", code: "ipe" },
-  { name: "Petroleum and Mining Engineering", code: "pme" },
-  { name: "Chemical Engineering", code: "che" },
-  { name: "Biomedical Engineering", code: "bme" },
-  { name: "Textile Engineering", code: "te" },
-  { name: "Microbiology", code: "mb" },
-  { name: "Fisheries and Marine Bioscience", code: "fmb" },
-  { name: "Genetic Engineering and Biotechnology", code: "gebt" },
-  { name: "Pharmacy", code: "phar" },
-  { name: "Biochemistry and Molecular Biology", code: "bmb" },
-  { name: "Environmental Science and Technology", code: "est" },
-  { name: "Nutrition and Food Technology", code: "nft" },
-  { name: "Food Engineering", code: "fmb" },
-  { name: "Climate and Disaster Management", code: "cdm" },
-  { name: "Physical Education and Sports Science", code: "pess" },
-  { name: "Physiotherapy and Rehabilitation", code: "ptr" },
-  { name: "Nursing and Health Science", code: "nhs" },
-  { name: "English", code: "eng" },
-  { name: "Physics", code: "phy" },
-  { name: "Chemistry", code: "chem" },
-  { name: "Mathematics", code: "math" },
-  { name: "Applied Statistics and Data Science", code: "asd" },
-  { name: "Accounting and Information Systems", code: "ais" },
-  { name: "Management", code: "mgt" },
-  { name: "Finance and Banking", code: "fb" },
-  { name: "Marketing", code: "mkt" }
-];
+  const orgTypes = [
+    "Club",
+    "NGO",
+    "Department",
+    "Community",
+    "Society",
+    "Association",
+  ];
+  const campuses = [
+    "Main Campus",
+    "North Campus",
+    "South Campus",
+    "City Campus",
+    "Online",
+  ];
 
+  const departments = [
+    { name: "Computer Science and Engineering", code: "cse" },
+    { name: "Electrical and Electronic Engineering", code: "eee" },
+    { name: "Industrial and Production Engineering", code: "ipe" },
+    { name: "Petroleum and Mining Engineering", code: "pme" },
+    { name: "Chemical Engineering", code: "che" },
+    { name: "Biomedical Engineering", code: "bme" },
+    { name: "Textile Engineering", code: "te" },
+    { name: "Microbiology", code: "mb" },
+    { name: "Fisheries and Marine Bioscience", code: "fmb" },
+    { name: "Genetic Engineering and Biotechnology", code: "gebt" },
+    { name: "Pharmacy", code: "phar" },
+    { name: "Biochemistry and Molecular Biology", code: "bmb" },
+    { name: "Environmental Science and Technology", code: "est" },
+    { name: "Nutrition and Food Technology", code: "nft" },
+    { name: "Food Engineering", code: "fmb" },
+    { name: "Climate and Disaster Management", code: "cdm" },
+    { name: "Physical Education and Sports Science", code: "pess" },
+    { name: "Physiotherapy and Rehabilitation", code: "ptr" },
+    { name: "Nursing and Health Science", code: "nhs" },
+    { name: "English", code: "eng" },
+    { name: "Physics", code: "phy" },
+    { name: "Chemistry", code: "chem" },
+    { name: "Mathematics", code: "math" },
+    { name: "Applied Statistics and Data Science", code: "asd" },
+    { name: "Accounting and Information Systems", code: "ais" },
+    { name: "Management", code: "mgt" },
+    { name: "Finance and Banking", code: "fb" },
+    { name: "Marketing", code: "mkt" },
+  ];
 
   const sessions = Array.from({ length: 10 }, (_, i) => {
     const year = new Date().getFullYear() - i;
@@ -118,7 +135,7 @@ export default function SignUp() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         setError("Please select a valid image file (JPEG, PNG, etc.)");
         return;
       }
@@ -146,25 +163,25 @@ export default function SignUp() {
       uppercase: /(?=.*[A-Z])/.test(password),
       lowercase: /(?=.*[a-z])/.test(password),
       number: /(?=.*\d)/.test(password),
-      special: /(?=.*[@$!%*?&])/.test(password)
+      special: /(?=.*[@$!%*?&])/.test(password),
     };
-    
+
     setPasswordStrength(strength);
-    
+
     const errors = [];
     if (!strength.length) errors.push("At least 8 characters");
     if (!strength.uppercase) errors.push("One uppercase letter");
     if (!strength.lowercase) errors.push("One lowercase letter");
     if (!strength.number) errors.push("One number");
     if (!strength.special) errors.push("One special character (@$!%*?&)");
-    
+
     return errors;
   };
 
   // Handle password change
   const handlePasswordChange = (e) => {
     const password = e.target.value;
-    setFormData(prev => ({ ...prev, password }));
+    setFormData((prev) => ({ ...prev, password }));
     validatePassword(password);
   };
 
@@ -179,19 +196,19 @@ export default function SignUp() {
     if (!emailRegex.test(email)) {
       return "Email must be in format: roll.dept@student.just.edu.bd (e.g., 200142.cse@student.just.edu.bd)";
     }
-    
-    const [localPart] = email.split('@');
-    const [roll, dept] = localPart.split('.');
-    
+
+    const [localPart] = email.split("@");
+    const [roll, dept] = localPart.split(".");
+
     if (roll.length !== 6) {
       return "Roll number must be exactly 6 digits";
     }
-    
-    const validDepartments = departments.map(dept => dept.code);
+
+    const validDepartments = departments.map((dept) => dept.code);
     if (!validDepartments.includes(dept)) {
       return "Invalid department code. Please select from the list.";
     }
-    
+
     return null;
   };
 
@@ -235,7 +252,9 @@ export default function SignUp() {
     // Password validation
     const passwordErrors = validatePassword(formData.password);
     if (passwordErrors.length > 0) {
-      setError(`Password must contain: ${passwordErrors.join(", ")}`);
+      const errorMsg = `Password must contain: ${passwordErrors.join(", ")}`;
+      setError(errorMsg);
+      toast.error("Please fix password requirements");
       setLoading(false);
       return;
     }
@@ -243,17 +262,20 @@ export default function SignUp() {
     // Confirm password validation
     if (!validatePasswordMatch()) {
       setError("Passwords do not match");
+      toast.error("Passwords do not match");
       setLoading(false);
       return;
     }
 
     // Email validation
-    const emailError = role === "student" 
-      ? validateStudentEmail(formData.email)
-      : validateOrganizationEmail(formData.email);
-    
+    const emailError =
+      role === "student"
+        ? validateStudentEmail(formData.email)
+        : validateOrganizationEmail(formData.email);
+
     if (emailError) {
       setError(emailError);
+      toast.error("Invalid email format");
       setLoading(false);
       return;
     }
@@ -262,16 +284,19 @@ export default function SignUp() {
     if (role === "student") {
       if (!formData.studentId) {
         setError("Student ID is required");
+        toast.error("Student ID is required");
         setLoading(false);
         return;
       }
       if (!formData.department) {
         setError("Please select a department");
+        toast.error("Please select a department");
         setLoading(false);
         return;
       }
       if (!formData.session) {
         setError("Please select admission session");
+        toast.error("Please select admission session");
         setLoading(false);
         return;
       }
@@ -281,11 +306,13 @@ export default function SignUp() {
     if (role === "organization") {
       if (!formData.orgName.trim()) {
         setError("Organization name is required");
+        toast.error("Organization name is required");
         setLoading(false);
         return;
       }
       if (!formData.orgType) {
         setError("Please select organization type");
+        toast.error("Please select organization type");
         setLoading(false);
         return;
       }
@@ -293,14 +320,27 @@ export default function SignUp() {
 
     try {
       let photoURL = null;
-      
+
       // Upload photo if selected
       if (photoFile) {
-        photoURL = await handlePhotoUpload(photoFile);
+        const uploadToast = toast.loading("Uploading profile photo...");
+        try {
+          photoURL = await handlePhotoUpload(photoFile);
+          toast.success("Photo uploaded successfully!", { id: uploadToast });
+        } catch (uploadError) {
+          toast.error("Failed to upload photo", { id: uploadToast });
+          throw uploadError;
+        }
       }
 
+      // Show creating account toast
+      const creatingToast = toast.loading("Creating your account...");
+
       // 1. Create user in Firebase
-      const userCredential = await createUser(formData.email, formData.password);
+      const userCredential = await createUser(
+        formData.email,
+        formData.password
+      );
       const user = userCredential.user;
 
       // 2. Prepare user data for MongoDB
@@ -309,61 +349,86 @@ export default function SignUp() {
         email: formData.email,
         name: formData.name,
         role: role,
-        photoURL: photoURL || (role === 'organization' 
-          ? `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.orgName)}&background=4bbeff&color=fff`
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name)}&background=4bbeff&color=fff`),
+        photoURL:
+          photoURL ||
+          (role === "organization"
+            ? `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                formData.orgName
+              )}&background=4bbeff&color=fff`
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                formData.name
+              )}&background=4bbeff&color=fff`),
         createdAt: new Date().toISOString(),
-        ...(role === 'organization' ? {
-          organization: {
-            name: formData.orgName,
-            type: formData.orgType,
-            tagline: formData.tagline,
-            founded: formData.founded,
-            website: formData.website,
-            phone: formData.phone,
-            campus: formData.campus,
-            mission: formData.mission,
-            membershipCount: 0,
-            status: 'active',
-            verified: false
-          }
-        } : {
-          student: {
-            studentId: formData.studentId,
-            department: formData.department,
-            session: formData.session,
-            year: new Date().getFullYear(),
-            status: 'active',
-            verified: false
-          }
-        })
+        ...(role === "organization"
+          ? {
+              organization: {
+                name: formData.orgName,
+                type: formData.orgType,
+                tagline: formData.tagline,
+                founded: formData.founded,
+                website: formData.website,
+                phone: formData.phone,
+                campus: formData.campus,
+                mission: formData.mission,
+                membershipCount: 0,
+                status: "active",
+                verified: false,
+              },
+            }
+          : {
+              student: {
+                studentId: formData.studentId,
+                department: formData.department,
+                session: formData.session,
+                year: new Date().getFullYear(),
+                status: "active",
+                verified: false,
+              },
+            }),
       };
 
       // 3. Save user data to MongoDB using axios
-      await axios.post('http://localhost:3000/users', userData, {
+      await axios.post("http://localhost:3000/users", userData, {
         headers: {
-          'Content-Type': 'application/json',
-        }
+          "Content-Type": "application/json",
+        },
       });
 
       // 4. Update Firebase profile
       await updateProfileUser({
         displayName: formData.name,
-        photoURL: userData.photoURL
+        photoURL: userData.photoURL,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      navigate('/dashboard');
+      // Success notification
+      toast.success(
+        `Welcome to Aidevo! ${
+          role === "organization" ? "Organization" : "Student"
+        } account created successfully!`,
+        {
+          id: creatingToast,
+          duration: 4000,
+        }
+      );
 
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      navigate("/dashboard");
     } catch (error) {
       console.error("Signup error:", error);
+
+      let errorMessage = "Failed to create account. Please try again.";
+
       if (error.response?.data?.message) {
-        setError(error.response.data.message);
-      } else if (error.code === 'auth/email-already-in-use') {
-        setError("This email is already registered. Please use a different email or sign in.");
-      } else {
-        setError("Failed to create account. Please try again.");
+        errorMessage = error.response.data.message;
+      } else if (error.code === "auth/email-already-in-use") {
+        errorMessage =
+          "This email is already registered. Please use a different email or sign in.";
+      } else if (error.message.includes("photo")) {
+        errorMessage = error.message;
       }
+
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
       setAuthLoading(false);
@@ -372,7 +437,7 @@ export default function SignUp() {
 
   // Password requirement component
   const PasswordRequirement = ({ met, text }) => (
-    <motion.div 
+    <motion.div
       className="flex items-center gap-2"
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
@@ -383,7 +448,7 @@ export default function SignUp() {
       ) : (
         <XCircle className="w-4 h-4 text-red-400" />
       )}
-      <span className={`text-sm ${met ? 'text-green-600' : 'text-gray-500'}`}>
+      <span className={`text-sm ${met ? "text-green-600" : "text-gray-500"}`}>
         {text}
       </span>
     </motion.div>
@@ -391,7 +456,7 @@ export default function SignUp() {
 
   return (
     <div className="min-h-screen mt-10 flex items-center justify-center bg-gradient-to-br from-sky-50 via-white to-blue-50 py-8 px-4">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-gray-100 p-8"
@@ -425,15 +490,25 @@ export default function SignUp() {
         </div>
 
         {/* Role Selection - Card Style */}
-        <motion.div 
+        <motion.div
           className="grid grid-cols-2 gap-4 mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
           {[
-            { value: "student", label: "Student", icon: User, description: "Join as a student" },
-            { value: "organization", label: "Organization", icon: Users, description: "Create organization" }
+            {
+              value: "student",
+              label: "Student",
+              icon: User,
+              description: "Join as a student",
+            },
+            {
+              value: "organization",
+              label: "Organization",
+              icon: Users,
+              description: "Create organization",
+            },
           ].map(({ value, label, icon: Icon, description }) => (
             <motion.button
               key={value}
@@ -442,23 +517,27 @@ export default function SignUp() {
               onClick={() => setRole(value)}
               disabled={loading}
               className={`p-6 rounded-2xl border-2 transition-all duration-300 text-left ${
-                role === value 
-                  ? "border-blue-500 bg-blue-50/50 shadow-lg" 
+                role === value
+                  ? "border-blue-500 bg-blue-50/50 shadow-lg"
                   : "border-gray-200 bg-white/50 hover:border-blue-300 hover:bg-blue-50/30"
-              } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-xl ${
-                  role === value 
-                    ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white" 
-                    : "bg-gray-100 text-gray-600"
-                }`}>
+                <div
+                  className={`p-3 rounded-xl ${
+                    role === value
+                      ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
+                >
                   <Icon size={20} />
                 </div>
                 <div className="">
-                  <h3 className={`font-semibold text-sm ${
-                    role === value ? "text-blue-600" : "text-gray-700"
-                  }`}>
+                  <h3
+                    className={`font-semibold text-sm ${
+                      role === value ? "text-blue-600" : "text-gray-700"
+                    }`}
+                  >
                     {label}
                   </h3>
                   <p className="text-xs text-gray-500 mt-1">{description}</p>
@@ -487,7 +566,7 @@ export default function SignUp() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Photo Upload Section */}
-          <motion.div 
+          <motion.div
             className="flex justify-center"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -496,9 +575,9 @@ export default function SignUp() {
             <div className="relative group">
               <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-100 border-4 border-white shadow-2xl overflow-hidden group-hover:shadow-3xl transition-all duration-500">
                 {photoPreview ? (
-                  <img 
-                    src={photoPreview} 
-                    alt="Preview" 
+                  <img
+                    src={photoPreview}
+                    alt="Preview"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -532,22 +611,28 @@ export default function SignUp() {
 
           {/* Common Fields */}
           <div className="grid md:grid-cols-2 gap-6">
-            <motion.div 
+            <motion.div
               className="space-y-2"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.6 }}
             >
               <label className="text-sm font-medium text-gray-700">
-                {role === 'organization' ? 'Contact Person Name *' : 'Full Name *'}
+                {role === "organization"
+                  ? "Contact Person Name *"
+                  : "Full Name *"}
               </label>
               <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                 <User className="text-gray-400 mr-3" size={18} />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder={role === 'organization' ? "John Doe" : "Your full name"}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  placeholder={
+                    role === "organization" ? "John Doe" : "Your full name"
+                  }
                   className="w-full outline-none text-gray-700 placeholder-gray-400 bg-transparent"
                   disabled={loading}
                   required
@@ -555,22 +640,26 @@ export default function SignUp() {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="space-y-2"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.7 }}
             >
-              <label className="text-sm font-medium text-gray-700">Email Address *</label>
+              <label className="text-sm font-medium text-gray-700">
+                Email Address *
+              </label>
               <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                 <Mail className="text-gray-400 mr-3" size={18} />
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, email: e.target.value }))
+                  }
                   placeholder={
-                    role === 'organization' 
-                      ? "contact@organization.edu" 
+                    role === "organization"
+                      ? "contact@organization.edu"
                       : "200142.cse@student.just.edu.bd"
                   }
                   className="w-full outline-none text-gray-700 placeholder-gray-400"
@@ -578,7 +667,7 @@ export default function SignUp() {
                   required
                 />
               </div>
-              {role === 'student' && (
+              {role === "student" && (
                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                   <Target className="w-3 h-3" />
                   Format: roll.dept@student.just.edu.bd
@@ -589,17 +678,19 @@ export default function SignUp() {
 
           {/* Password Fields */}
           <div className="grid md:grid-cols-2 gap-6">
-            <motion.div 
+            <motion.div
               className="space-y-3"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
             >
-              <label className="text-sm font-medium text-gray-700">Password *</label>
+              <label className="text-sm font-medium text-gray-700">
+                Password *
+              </label>
               <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                 <Lock className="text-gray-400 mr-3" size={18} />
-                <input 
-                  type={showPassword ? "text" : "password"} 
+                <input
+                  type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handlePasswordChange}
                   placeholder="Create a strong password"
@@ -618,19 +709,26 @@ export default function SignUp() {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="space-y-2"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.9 }}
             >
-              <label className="text-sm font-medium text-gray-700">Confirm Password *</label>
+              <label className="text-sm font-medium text-gray-700">
+                Confirm Password *
+              </label>
               <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                 <Lock className="text-gray-400 mr-3" size={18} />
-                <input 
-                  type={showConfirmPassword ? "text" : "password"} 
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
                   value={formData.confirmPassword}
-                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      confirmPassword: e.target.value,
+                    }))
+                  }
                   placeholder="Confirm your password"
                   className="w-full outline-none text-gray-700 placeholder-gray-400 bg-transparent"
                   disabled={loading}
@@ -642,42 +740,55 @@ export default function SignUp() {
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                   disabled={loading}
                 >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showConfirmPassword ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
                 </button>
               </div>
               {formData.confirmPassword && (
-                <motion.p 
+                <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className={`text-sm font-medium ${
-                    validatePasswordMatch() ? 'text-green-600' : 'text-red-600'
+                    validatePasswordMatch() ? "text-green-600" : "text-red-600"
                   }`}
                 >
-                  {validatePasswordMatch() ? '✓ Passwords match' : '✗ Passwords do not match'}
+                  {validatePasswordMatch()
+                    ? "✓ Passwords match"
+                    : "✗ Passwords do not match"}
                 </motion.p>
               )}
             </motion.div>
           </div>
-          
+
           {/* Password Strength Meter */}
           {formData.password && (
-            <motion.div 
+            <motion.div
               className="space-y-3 p-6 bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl border border-blue-100"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               transition={{ duration: 0.4 }}
             >
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-700">Password strength:</span>
-                <span className={`text-sm font-medium ${
-                  getPasswordStrength() <= 40 ? 'text-red-600' :
-                  getPasswordStrength() <= 80 ? 'text-yellow-600' : 'text-green-600'
-                }`}>
+                <span className="text-sm font-medium text-gray-700">
+                  Password strength:
+                </span>
+                <span
+                  className={`text-sm font-medium ${
+                    getPasswordStrength() <= 40
+                      ? "text-red-600"
+                      : getPasswordStrength() <= 80
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                  }`}
+                >
                   {getStrengthText()}
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <motion.div 
+                <motion.div
                   className={`h-2 rounded-full bg-gradient-to-r ${getStrengthColor()} shadow-inner`}
                   initial={{ width: 0 }}
                   animate={{ width: `${getPasswordStrength()}%` }}
@@ -685,11 +796,26 @@ export default function SignUp() {
                 ></motion.div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                <PasswordRequirement met={passwordStrength.length} text="At least 8 characters" />
-                <PasswordRequirement met={passwordStrength.uppercase} text="One uppercase letter" />
-                <PasswordRequirement met={passwordStrength.lowercase} text="One lowercase letter" />
-                <PasswordRequirement met={passwordStrength.number} text="One number" />
-                <PasswordRequirement met={passwordStrength.special} text="One special character" />
+                <PasswordRequirement
+                  met={passwordStrength.length}
+                  text="At least 8 characters"
+                />
+                <PasswordRequirement
+                  met={passwordStrength.uppercase}
+                  text="One uppercase letter"
+                />
+                <PasswordRequirement
+                  met={passwordStrength.lowercase}
+                  text="One lowercase letter"
+                />
+                <PasswordRequirement
+                  met={passwordStrength.number}
+                  text="One number"
+                />
+                <PasswordRequirement
+                  met={passwordStrength.special}
+                  text="One special character"
+                />
               </div>
             </motion.div>
           )}
@@ -707,13 +833,20 @@ export default function SignUp() {
                 <div className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Organization Name *</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        Organization Name *
+                      </label>
                       <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                         <Building2 className="text-gray-400 mr-3" size={18} />
                         <input
                           type="text"
                           value={formData.orgName}
-                          onChange={(e) => setFormData(prev => ({ ...prev, orgName: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              orgName: e.target.value,
+                            }))
+                          }
                           placeholder="Photographic Society"
                           className="w-full outline-none text-gray-700 placeholder-gray-400"
                           disabled={loading}
@@ -723,28 +856,44 @@ export default function SignUp() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Organization Type *</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        Organization Type *
+                      </label>
                       <select
                         value={formData.orgType}
-                        onChange={(e) => setFormData(prev => ({ ...prev, orgType: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            orgType: e.target.value,
+                          }))
+                        }
                         disabled={loading}
                         className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                         required
                       >
                         <option value="">Select Type</option>
-                        {orgTypes.map(type => (
-                          <option key={type} value={type}>{type}</option>
+                        {orgTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
                         ))}
                       </select>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Tagline</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Tagline
+                    </label>
                     <input
                       type="text"
                       value={formData.tagline}
-                      onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          tagline: e.target.value,
+                        }))
+                      }
                       placeholder="Brief description of your organization"
                       className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder-gray-400"
                       disabled={loading}
@@ -753,13 +902,20 @@ export default function SignUp() {
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Founded Date</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        Founded Date
+                      </label>
                       <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                         <Calendar className="text-gray-400 mr-3" size={18} />
                         <input
                           type="date"
                           value={formData.founded}
-                          onChange={(e) => setFormData(prev => ({ ...prev, founded: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              founded: e.target.value,
+                            }))
+                          }
                           className="w-full outline-none text-gray-700"
                           disabled={loading}
                         />
@@ -767,16 +923,25 @@ export default function SignUp() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Campus</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        Campus
+                      </label>
                       <select
                         value={formData.campus}
-                        onChange={(e) => setFormData(prev => ({ ...prev, campus: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            campus: e.target.value,
+                          }))
+                        }
                         disabled={loading}
                         className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                       >
                         <option value="">Select Campus</option>
-                        {campuses.map(campus => (
-                          <option key={campus} value={campus}>{campus}</option>
+                        {campuses.map((campus) => (
+                          <option key={campus} value={campus}>
+                            {campus}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -784,11 +949,18 @@ export default function SignUp() {
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Phone Number</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        Phone Number
+                      </label>
                       <input
                         type="tel"
                         value={formData.phone}
-                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            phone: e.target.value,
+                          }))
+                        }
                         placeholder="+880 12389-45679"
                         className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder-gray-400"
                         disabled={loading}
@@ -796,13 +968,20 @@ export default function SignUp() {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Website</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        Website
+                      </label>
                       <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                         <Globe className="text-gray-400 mr-3" size={18} />
                         <input
                           type="url"
                           value={formData.website}
-                          onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              website: e.target.value,
+                            }))
+                          }
                           placeholder="https://your-organization.edu"
                           className="w-full outline-none text-gray-700 placeholder-gray-400"
                           disabled={loading}
@@ -812,10 +991,17 @@ export default function SignUp() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Mission Statement</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Mission Statement
+                    </label>
                     <textarea
                       value={formData.mission}
-                      onChange={(e) => setFormData(prev => ({ ...prev, mission: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          mission: e.target.value,
+                        }))
+                      }
                       placeholder="Describe your organization's mission and purpose..."
                       className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none h-24 placeholder-gray-400"
                       disabled={loading}
@@ -826,47 +1012,72 @@ export default function SignUp() {
                 <div className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Student ID *</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        Student ID *
+                      </label>
                       <input
                         type="text"
                         value={formData.studentId}
-                        onChange={(e) => setFormData(prev => ({ ...prev, studentId: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            studentId: e.target.value,
+                          }))
+                        }
                         placeholder="200142"
                         className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder-gray-400"
                         disabled={loading}
                         required
                       />
-                      <p className="text-xs text-gray-500">Your 6-digit student ID</p>
+                      <p className="text-xs text-gray-500">
+                        Your 6-digit student ID
+                      </p>
                     </div>
-                    
+
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Session *</label>
+                      <label className="text-sm font-medium text-gray-700">
+                        Session *
+                      </label>
                       <select
                         value={formData.session}
-                        onChange={(e) => setFormData(prev => ({ ...prev, session: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            session: e.target.value,
+                          }))
+                        }
                         disabled={loading}
                         className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                         required
                       >
                         <option value="">Select Session</option>
-                        {sessions.map(session => (
-                          <option key={session} value={session}>{session}</option>
+                        {sessions.map((session) => (
+                          <option key={session} value={session}>
+                            {session}
+                          </option>
                         ))}
                       </select>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Department *</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Department *
+                    </label>
                     <select
                       value={formData.department}
-                      onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          department: e.target.value,
+                        }))
+                      }
                       disabled={loading}
                       className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                       required
                     >
                       <option value="">Select Department</option>
-                      {departments.map(dept => (
+                      {departments.map((dept) => (
                         <option key={dept.code} value={dept.code}>
                           {dept.name} ({dept.code})
                         </option>
@@ -895,13 +1106,16 @@ export default function SignUp() {
             ) : (
               <>
                 <GraduationCap className="w-6 h-6" />
-                <span>Create {role === 'organization' ? 'Organization' : 'Student'} Account</span>
+                <span>
+                  Create {role === "organization" ? "Organization" : "Student"}{" "}
+                  Account
+                </span>
               </>
             )}
           </motion.button>
         </form>
 
-        <motion.div 
+        <motion.div
           className="text-center mt-8 pt-6 border-t border-gray-200"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -915,16 +1129,21 @@ export default function SignUp() {
               className="text-blue-500 hover:text-blue-600 font-semibold transition-colors disabled:opacity-50 inline-flex items-center gap-1 group"
             >
               Sign In
-              <motion.svg 
-                className="w-4 h-4" 
-                fill="none" 
-                stroke="currentColor" 
+              <motion.svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
                 initial={{ x: 0 }}
                 whileHover={{ x: 3 }}
                 transition={{ duration: 0.2 }}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
               </motion.svg>
             </button>
           </p>

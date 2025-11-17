@@ -60,7 +60,7 @@ const TopBar = ({ sidebarOpen, setSidebarOpen, userInfo, user }) => {
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-gray-900">
-                {user?.displayName || userInfo?.name || 'User'}
+                {userInfo?.name || 'User'}
               </p>
               <p className="text-xs text-gray-500 capitalize">
                 {userInfo.role}
