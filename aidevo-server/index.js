@@ -222,6 +222,7 @@ async function run() {
           role: user.role,
           organizationId: user._id.toString(),
           studentId: user._id.toString(),
+          name: user.name
         };
 
         res.json(userInfo);
@@ -926,67 +927,67 @@ async function run() {
     );
 
     // Get organizations where student is a member
-app.get('/students/:studentId/organizations', async (req, res) => {
-  try {
-    const { studentId } = req.params;
-    const { search } = req.query;
+    app.get("/students/:studentId/organizations", async (req, res) => {
+      try {
+        const { studentId } = req.params;
+        const { search } = req.query;
 
-    console.log('Fetching organizations for student:', studentId);
+        console.log("Fetching organizations for student:", studentId);
 
-    if (!ObjectId.isValid(studentId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid student ID'
-      });
-    }
+        if (!ObjectId.isValid(studentId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid student ID",
+          });
+        }
 
-    let query = { 
-      studentId: studentId,
-      status: 'active'
-    };
+        let query = {
+          studentId: studentId,
+          status: "active",
+        };
 
-    // If search term provided, add search conditions
-    if (search) {
-      query.$or = [
-        { organizationName: { $regex: search, $options: 'i' } },
-        { organizationEmail: { $regex: search, $options: 'i' } },
-        { 'organizationInfo.type': { $regex: search, $options: 'i' } }
-      ];
-    }
+        // If search term provided, add search conditions
+        if (search) {
+          query.$or = [
+            { organizationName: { $regex: search, $options: "i" } },
+            { organizationEmail: { $regex: search, $options: "i" } },
+            { "organizationInfo.type": { $regex: search, $options: "i" } },
+          ];
+        }
 
-    const members = await membersCollection
-      .find(query)
-      .sort({ joinedAt: -1 })
-      .toArray();
+        const members = await membersCollection
+          .find(query)
+          .sort({ joinedAt: -1 })
+          .toArray();
 
-    console.log(`Found ${members.length} organizations for student`);
+        console.log(`Found ${members.length} organizations for student`);
 
-    // Format the response to include organization details
-    const organizations = members.map(member => ({
-      _id: member._id,
-      organizationId: member.organizationId,
-      organizationName: member.organizationName,
-      organizationEmail: member.organizationEmail,
-      organizationPhoto: member.organizationPhoto,
-      organizationInfo: member.organizationInfo,
-      joinedAt: member.joinedAt,
-      role: member.role,
-      status: member.status
-    }));
+        // Format the response to include organization details
+        const organizations = members.map((member) => ({
+          _id: member._id,
+          organizationId: member.organizationId,
+          organizationName: member.organizationName,
+          organizationEmail: member.organizationEmail,
+          organizationPhoto: member.organizationPhoto,
+          organizationInfo: member.organizationInfo,
+          joinedAt: member.joinedAt,
+          role: member.role,
+          status: member.status,
+        }));
 
-    res.json({
-      success: true,
-      organizations: organizations
+        res.json({
+          success: true,
+          organizations: organizations,
+        });
+      } catch (err) {
+        console.error("Error fetching student organizations:", err);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch student organizations",
+          error: err.message,
+        });
+      }
     });
-  } catch (err) {
-    console.error('Error fetching student organizations:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch student organizations',
-      error: err.message
-    });
-  }
-});
 
     // Get all students
     app.get("/students", async (req, res) => {
@@ -1234,6 +1235,226 @@ app.get('/students/:studentId/organizations', async (req, res) => {
         res.status(500).json({
           success: false,
           message: "Failed to fetch event",
+          error: err.message,
+        });
+      }
+    });
+
+    //for organization profile
+    // Update organization profile
+    // Update organization profile
+    app.put("/organizations/:organizationId/profile", async (req, res) => {
+      try {
+        const { organizationId } = req.params;
+        const updateData = req.body;
+
+        console.log(
+          "Updating organization profile:",
+          organizationId,
+          updateData
+        );
+
+        if (!ObjectId.isValid(organizationId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid organization ID",
+          });
+        }
+
+        // Check if organization exists
+        const existingOrg = await usersCollection.findOne({
+          _id: new ObjectId(organizationId),
+          role: "organization",
+        });
+
+        if (!existingOrg) {
+          return res.status(404).json({
+            success: false,
+            message: "Organization not found",
+          });
+        }
+
+        // Prepare update fields - merge with existing data
+        const updateFields = {};
+
+        if (updateData.organization) {
+          updateFields.organization = {
+            ...existingOrg.organization,
+            ...updateData.organization,
+          };
+        }
+
+        if (updateData.name) {
+          updateFields.name = updateData.name;
+        }
+
+        if (updateData.photoURL) {
+          updateFields.photoURL = updateData.photoURL;
+        }
+
+        console.log("Final update fields:", updateFields);
+
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(organizationId), role: "organization" },
+          { $set: updateFields }
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Organization not found for update",
+          });
+        }
+
+        // Get updated organization
+        const updatedOrganization = await usersCollection.findOne({
+          _id: new ObjectId(organizationId),
+        });
+
+        res.json({
+          success: true,
+          message: "Profile updated successfully",
+          organization: updatedOrganization,
+        });
+      } catch (err) {
+        console.error("Error updating organization profile:", err);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update profile",
+          error: err.message,
+        });
+      }
+    });
+
+    // Update individual organization field
+    app.patch("/organizations/:organizationId/field", async (req, res) => {
+      try {
+        const { organizationId } = req.params;
+        const { field, value } = req.body;
+
+        console.log("Updating field:", field, "to:", value);
+
+        if (!ObjectId.isValid(organizationId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid organization ID",
+          });
+        }
+
+        // Build the update path for nested fields
+        let updatePath = {};
+        if (field.startsWith("organization.")) {
+          const nestedField = field.replace("organization.", "");
+          updatePath[`organization.${nestedField}`] = value;
+        } else {
+          updatePath[field] = value;
+        }
+
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(organizationId), role: "organization" },
+          { $set: updatePath }
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Organization not found",
+          });
+        }
+
+        // Get updated organization
+        const updatedOrganization = await usersCollection.findOne({
+          _id: new ObjectId(organizationId),
+        });
+
+        res.json({
+          success: true,
+          message: "Field updated successfully",
+          organization: updatedOrganization,
+        });
+      } catch (err) {
+        console.error("Error updating organization field:", err);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update field",
+          error: err.message,
+        });
+      }
+    });
+
+    // Get organization profile by ID
+    app.get("/organizations/:organizationId/profile", async (req, res) => {
+      try {
+        const { organizationId } = req.params;
+
+        if (!ObjectId.isValid(organizationId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid organization ID",
+          });
+        }
+
+        const organization = await usersCollection.findOne({
+          _id: new ObjectId(organizationId),
+          role: "organization",
+        });
+
+        if (!organization) {
+          return res.status(404).json({
+            success: false,
+            message: "Organization not found",
+          });
+        }
+
+        res.json({
+          success: true,
+          organization: organization,
+        });
+      } catch (err) {
+        console.error("Error fetching organization profile:", err);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch organization profile",
+          error: err.message,
+        });
+      }
+    });
+
+    // Upload cover photo
+    app.post("/organizations/:organizationId/cover-photo", async (req, res) => {
+      try {
+        const { organizationId } = req.params;
+        const { coverPhotoURL } = req.body;
+
+        if (!ObjectId.isValid(organizationId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid organization ID",
+          });
+        }
+
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(organizationId), role: "organization" },
+          { $set: { "organization.coverPhoto": coverPhotoURL } }
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Organization not found",
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "Cover photo updated successfully",
+          coverPhotoURL: coverPhotoURL,
+        });
+      } catch (err) {
+        console.error("Error updating cover photo:", err);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update cover photo",
           error: err.message,
         });
       }
