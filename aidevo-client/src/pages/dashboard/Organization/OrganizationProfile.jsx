@@ -44,8 +44,9 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary";
 import useAuth from "../../../hooks/useAuth";
+import { useUserContext } from "../../../context/UserContext";
 
-// Enhanced Inline Edit Field Component
+// Enhanced Inline Edit Field Component (unchanged)
 const InlineEditField = ({
   value,
   onSave,
@@ -213,6 +214,7 @@ const OrganizationProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [savingField, setSavingField] = useState(null);
   const { user } = useAuth();
+  const { updateGlobalUserInfo } = useUserContext(); // Add this
 
   const [profileData, setProfileData] = useState({
     _id: "",
@@ -223,7 +225,6 @@ const OrganizationProfile = () => {
     photoURL: "",
     createdAt: "",
     organization: {
-      name: "",
       type: "",
       tagline: "",
       founded: "",
@@ -304,7 +305,7 @@ const OrganizationProfile = () => {
     }
   };
 
-  // Update individual field
+  // Update individual field - MODIFIED VERSION
   const updateField = async (field, value) => {
     try {
       setSavingField(field);
@@ -317,7 +318,18 @@ const OrganizationProfile = () => {
       );
 
       if (response.data.success) {
-        setProfileData(response.data.organization);
+        const updatedData = response.data.organization;
+        setProfileData(updatedData);
+        
+        // Update global user info for immediate UI updates
+        if (field === 'name') {
+          updateGlobalUserInfo({ name: value });
+        } else if (field === 'photoURL') {
+          updateGlobalUserInfo({ photoURL: value });
+        } else if (field === 'organization.name') {
+          updateGlobalUserInfo({ name: value });
+        }
+
         toast.success("Updated successfully!");
         return true;
       } else {
@@ -357,7 +369,7 @@ const OrganizationProfile = () => {
     }
   };
 
-  // Fixed image upload function
+  // Fixed image upload function - MODIFIED VERSION
   const handleImageUpload = async (file, type) => {
     try {
       setUploading(true);
@@ -379,6 +391,8 @@ const OrganizationProfile = () => {
 
       if (type === "logo") {
         updateFieldPath = "photoURL";
+        // Immediately update global user info for instant UI update
+        updateGlobalUserInfo({ photoURL: imageUrl });
       } else if (type === "cover") {
         updateFieldPath = "organization.coverPhoto";
       }
@@ -420,9 +434,7 @@ const OrganizationProfile = () => {
       }
     } catch (error) {
       console.error(`Error uploading ${type}:`, error);
-      toast.error(`Failed to upload ${type}: ${error.message}`, {
-        id: uploadToast,
-      });
+      
       return false;
     } finally {
       setUploading(false);
@@ -464,7 +476,7 @@ const OrganizationProfile = () => {
     }
 
     // Validate file size (max 2MB for logo)
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) {
       toast.error("Logo size should be less than 2MB");
       return;
     }
@@ -499,7 +511,15 @@ const OrganizationProfile = () => {
       );
 
       if (response.data.success) {
-        setProfileData(response.data.organization);
+        const updatedData = response.data.organization;
+        setProfileData(updatedData);
+        
+        // Update global user info with latest data
+        updateGlobalUserInfo({
+          name: updatedData.name,
+          photoURL: updatedData.photoURL
+        });
+
         toast.success("Profile updated successfully!", { id: saveToast });
         setIsEditing(false);
       } else {

@@ -11,7 +11,7 @@ import useUserRole from "../../hooks/useUserRole";
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, logOut } = useAuth();
-  const {userInfo} = useUserRole();
+  const { userInfo } = useUserRole();
 
   const handleSignOut = () => {
     const loadingToast = toast.loading(
@@ -192,10 +192,20 @@ const Navbar = () => {
                 <div className="md:hidden flex items-center gap-2">
                   <button
                     onClick={handleUserProfileClick}
-                    className="w-8 h-8 bg-gradient-to-r from-[#4bbeff] to-[#3aa8e6] rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold overflow-hidden"
                     aria-label="User profile"
                   >
-                    {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+                    {userInfo?.photoURL ? (
+                      <img 
+                        src={userInfo.photoURL} 
+                        alt="User Avatar" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-[#4bbeff] to-[#3aa8e6] rounded-full flex items-center justify-center">
+                        {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </button>
                   
                   <button
@@ -230,15 +240,28 @@ const Navbar = () => {
             {user && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex items-center gap-3 px-2 py-3 bg-blue-50 rounded-lg">
-                  <div className="w-10 h-10 bg-gradient-to-r from-[#4bbeff] to-[#3aa8e6] rounded-full flex items-center justify-center text-white font-semibold">
-                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden">
+                    {userInfo?.photoURL ? (
+                      <img 
+                        src={userInfo.photoURL} 
+                        alt="User Avatar" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-[#4bbeff] to-[#3aa8e6] rounded-full flex items-center justify-center text-white font-semibold">
+                        {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">
-                      {user.displayName || 'User'}
+                      {userInfo?.name || 'User'}
                     </p>
                     <p className="text-xs text-gray-600 truncate">
                       {user.email}
+                    </p>
+                    <p className="text-xs text-blue-600 font-medium capitalize">
+                      {userInfo?.role || 'user'}
                     </p>
                   </div>
                 </div>

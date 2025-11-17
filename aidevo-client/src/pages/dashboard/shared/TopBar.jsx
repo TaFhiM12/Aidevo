@@ -63,13 +63,13 @@ const TopBar = ({ sidebarOpen, setSidebarOpen, userInfo, user }) => {
                 {userInfo?.name || 'User'}
               </p>
               <p className="text-xs text-gray-500 capitalize">
-                {userInfo.role}
+                {userInfo?.role || 'user'}
               </p>
             </div>
             <img
               src={userInfo?.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"}
               alt="Profile"
-              className="w-8 h-8 rounded-lg"
+              className="w-8 h-8 rounded-lg object-cover"
             />
           </div>
         </div>
