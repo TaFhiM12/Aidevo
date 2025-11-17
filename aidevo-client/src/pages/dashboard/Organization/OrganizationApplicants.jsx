@@ -55,13 +55,13 @@ const OrganizationApplicants = () => {
       setLoading(true);
       setError("");
 
-      console.log('Fetching applications for organization:', user.uid);
+      // console.log('Fetching applications for organization:', user.uid);
 
       const response = await axios.get(
         `http://localhost:3000/organizations/${user.uid}/applications`
       );
       
-      console.log('Applications fetched:', response.data.applications.length);
+      // console.log('Applications fetched:', response.data.applications.length);
       setApplications(response.data.applications);
     } catch (error) {
       console.error("Error fetching applications:", error);

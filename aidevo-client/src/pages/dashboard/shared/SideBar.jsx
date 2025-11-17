@@ -137,26 +137,23 @@ const SideBar = ({ sidebarOpen, userInfo, user, logOut }) => {
       } transition-all duration-300 flex flex-col h-screen fixed left-0 top-0 z-40`}
     >
       {/* Logo - Fixed at top */}
-      <div className="flex-shrink-0">
-        <Link to="/">
-          <div className="p-4 border-b border-gray-200">
-            {sidebarOpen ? (
-              <div className="flex items-center">
-                <Logo/>
-                {/* <div>
-                  <p className="text-xs text-gray-500">{getRoleBadge()}</p>
-                </div> */}
-              </div>
-            ) : (
-              <div className="flex justify-center">
-                <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-              </div>
-            )}
-          </div>
-        </Link>
+<div className="flex-shrink-0">
+  <div className="p-4 border-b border-gray-200">
+    {sidebarOpen ? (
+      <div className="flex items-center">
+        <Logo/>
       </div>
+    ) : (
+      <Link to='/'>
+      <div className="flex justify-center">
+        <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center">
+          <Sparkles className="w-5 h-5 text-white" />
+        </div>
+      </div>
+      </Link>
+    )}
+  </div>
+</div>
 
       {/* Navigation - Scrollable */}
       <nav className="flex-1 overflow-y-auto py-4 px-4 space-y-2">

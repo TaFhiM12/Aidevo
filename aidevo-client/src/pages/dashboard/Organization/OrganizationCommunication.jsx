@@ -95,11 +95,11 @@ const OrganizationCommunication = () => {
   // Get organization MongoDB ID first
   const fetchOrganizationId = async () => {
     try {
-      console.log('Fetching organization ID for:', user.email);
+      // console.log('Fetching organization ID for:', user.email);
       const response = await axios.get(`http://localhost:3000/users/uid/${user.uid}`);
       if (response.data.success) {
         setOrganizationId(response.data.user._id);
-        console.log('Organization ID:', response.data.user._id);
+        // console.log('Organization ID:', response.data.user._id);
       }
     } catch (error) {
       console.error('Error fetching organization ID:', error);
@@ -128,11 +128,11 @@ const OrganizationCommunication = () => {
     try {
       if (!organizationId) return;
       
-      console.log('Fetching members for organization ID:', organizationId);
+      // console.log('Fetching members for organization ID:', organizationId);
       
       // Use the organization ID to fetch members
       const response = await axios.get(`http://localhost:3000/organizations/email/${user.email}/members`);
-      console.log('Members fetched:', response.data.members);
+      // console.log('Members fetched:', response.data.members);
       setOrganizationMembers(response.data.members);
     } catch (error) {
       console.error('Error fetching organization members:', error);
