@@ -67,7 +67,7 @@ const TopBar = ({ sidebarOpen, setSidebarOpen, userInfo, user }) => {
               </p>
             </div>
             <img
-              src={user?.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"}
+              src={userInfo?.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"}
               alt="Profile"
               className="w-8 h-8 rounded-lg"
             />

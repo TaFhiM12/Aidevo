@@ -169,9 +169,11 @@ const Navbar = () => {
                     onClick={handleUserProfileClick}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors group cursor-pointer"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-r from-[#4bbeff] to-[#3aa8e6] rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                      {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
-                    </div>
+                    <img
+                      src={userInfo?.photoURL || '/default-avatar.png'}
+                      alt="User Avatar"
+                      className="w-8 h-8 rounded-full object-cover border-2 border-blue-400 group-hover:border-blue-500"
+                    />
                     <span className="text-gray-700 font-medium max-w-32 truncate">
                       {userInfo?.name || 'User'}
                     </span>
