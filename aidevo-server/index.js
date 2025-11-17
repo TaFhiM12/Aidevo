@@ -227,7 +227,8 @@ async function run() {
           role: user.role,
           organizationId: user._id.toString(),
           studentId: user._id.toString(),
-          name: user.name
+          name: user.name,
+          photoURL: user.photoURL
         };
 
         res.json(userInfo);
