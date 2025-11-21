@@ -25,6 +25,23 @@ const ClubProfile = ({ organization }) => {
     const [profileData, setProfileData] = useState(organization);
     const [savingField, setSavingField] = useState(null);
 
+    const handleLogoUpdate = (newLogoUrl) => {
+        setProfileData(prev => ({
+            ...prev,
+            photoURL: newLogoUrl
+        }));
+    };
+
+    const handleCoverUpdate = (newCoverUrl) => {
+        setProfileData(prev => ({
+            ...prev,
+            organization: {
+                ...prev.organization,
+                coverPhoto: newCoverUrl
+            }
+        }));
+    };
+
     const handleFieldUpdate = async (field, value) => {
         const success = await updateField(profileData._id, field, value, setSavingField);
         if (success) {
@@ -90,6 +107,8 @@ const ClubProfile = ({ organization }) => {
                     onEditToggle={setIsEditing}
                     onFieldUpdate={handleFieldUpdate}
                     savingField={savingField}
+                    onLogoUpdate={handleLogoUpdate}
+                    onCoverUpdate={handleCoverUpdate}
                 />
                 
                 {/* Tab Navigation */}
@@ -130,6 +149,29 @@ const ClubProfile = ({ organization }) => {
         </div>
     );
 };
+
+// Add this to ClubProfile.jsx
+const BenefitsTab = ({ organization, isEditing, onArrayUpdate, savingField }) => (
+    <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-6 border border-purple-200">
+        <div className="flex items-center gap-3 mb-6">
+            <Star className="text-purple-600" size={24} />
+            <h3 className="font-bold text-gray-900 text-xl">Membership Benefits</h3>
+        </div>
+        {isEditing ? (
+            <ArrayManager
+                items={organization.organization.membershipBenefits || []}
+                onUpdate={(items) => onArrayUpdate('organization.membershipBenefits', items)}
+                placeholder="Add membership benefit (e.g., Skill Development, Networking Opportunities)"
+                title="Membership Benefits"
+                description="List the benefits members receive by joining your club"
+                loading={savingField === 'organization.membershipBenefits'}
+                color="purple"
+            />
+        ) : (
+            <BenefitsList items={organization.organization.membershipBenefits} />
+        )}
+    </div>
+);
 
 // Tab Components
 const OverviewTab = ({ organization, isEditing, onFieldUpdate, savingField }) => (

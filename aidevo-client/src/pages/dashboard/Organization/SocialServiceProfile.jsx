@@ -18,6 +18,23 @@ const SocialServiceProfile = ({ organization }) => {
     const [profileData, setProfileData] = useState(organization);
     const [savingField, setSavingField] = useState(null);
 
+    const handleLogoUpdate = (newLogoUrl) => {
+        setProfileData(prev => ({
+            ...prev,
+            photoURL: newLogoUrl
+        }));
+    };
+
+    const handleCoverUpdate = (newCoverUrl) => {
+        setProfileData(prev => ({
+            ...prev,
+            organization: {
+                ...prev.organization,
+                coverPhoto: newCoverUrl
+            }
+        }));
+    };
+
     const handleFieldUpdate = async (field, value) => {
         const success = await updateField(profileData._id, field, value, setSavingField);
         if (success) {
@@ -84,6 +101,8 @@ const SocialServiceProfile = ({ organization }) => {
                     onFieldUpdate={handleFieldUpdate}
                     savingField={savingField}
                     theme="red"
+                    onLogoUpdate={handleLogoUpdate} // ADD THIS
+                    onCoverUpdate={handleCoverUpdate} 
                 />
                 
                 {/* Tab Navigation */}

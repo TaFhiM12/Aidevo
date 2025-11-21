@@ -17,6 +17,23 @@ const AssociationProfile = ({ organization }) => {
     const [profileData, setProfileData] = useState(organization);
     const [savingField, setSavingField] = useState(null);
 
+    const handleLogoUpdate = (newLogoUrl) => {
+        setProfileData(prev => ({
+            ...prev,
+            photoURL: newLogoUrl
+        }));
+    };
+
+    const handleCoverUpdate = (newCoverUrl) => {
+        setProfileData(prev => ({
+            ...prev,
+            organization: {
+                ...prev.organization,
+                coverPhoto: newCoverUrl
+            }
+        }));
+    };
+
     const handleFieldUpdate = async (field, value) => {
         const success = await updateField(profileData._id, field, value, setSavingField);
         if (success) {
@@ -83,6 +100,8 @@ const AssociationProfile = ({ organization }) => {
                     onFieldUpdate={handleFieldUpdate}
                     savingField={savingField}
                     theme="green"
+                    onLogoUpdate={handleLogoUpdate}
+                    onCoverUpdate={handleCoverUpdate}
                 />
                 
                 {/* Tab Navigation */}

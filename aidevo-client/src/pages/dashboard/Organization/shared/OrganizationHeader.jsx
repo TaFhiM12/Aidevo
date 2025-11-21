@@ -35,9 +35,12 @@ const OrganizationHeader = ({
     onEditToggle, 
     onFieldUpdate, 
     savingField,
-    theme = 'blue' 
+    theme = 'blue',
+    onLogoUpdate,
+    onCoverUpdate,
 }) => {
     const [uploading, setUploading] = useState(false);
+    const [uploadingType, setUploadingType] = useState(null);
     const coverFileInputRef = useRef(null);
     const logoFileInputRef = useRef(null);
 
@@ -70,6 +73,7 @@ const OrganizationHeader = ({
     const handleImageUpload = async (file, type) => {
         try {
             setUploading(true);
+            setUploadingType(type);
             const uploadToast = toast.loading(`Uploading ${type}...`);
 
             const imageUrl = await uploadToCloudinary(file);
@@ -99,6 +103,13 @@ const OrganizationHeader = ({
                 toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} uploaded successfully!`, { 
                     id: uploadToast 
                 });
+                
+                if (type === "logo" && onLogoUpdate) {
+                    onLogoUpdate(imageUrl);
+                } else if (type === "cover" && onCoverUpdate) {
+                    onCoverUpdate(imageUrl);
+                }
+                
                 return true;
             } else {
                 throw new Error(`Failed to save ${type} to database`);
@@ -109,6 +120,7 @@ const OrganizationHeader = ({
             return false;
         } finally {
             setUploading(false);
+            setUploadingType(null);
         }
     };
 
@@ -166,12 +178,12 @@ const OrganizationHeader = ({
                                 disabled={uploading}
                                 className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 transition-all flex items-center gap-2 font-medium justify-center"
                             >
-                                {uploading ? (
+                                {uploading && uploadingType === 'cover' ? (
                                     <Loader2 size={18} className="animate-spin" />
                                 ) : (
                                     <Upload size={18} />
                                 )}
-                                {uploading ? "Uploading..." : "Upload Cover Photo"}
+                                {uploading && uploadingType === 'cover' ? "Uploading..." : "Upload Cover Photo"}
                             </button>
                             <input
                                 ref={coverFileInputRef}
@@ -214,12 +226,12 @@ const OrganizationHeader = ({
                             disabled={uploading}
                             className="px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:from-blue-600 hover:to-cyan-600 disabled:opacity-50 transition-all flex items-center gap-2 font-medium flex-1"
                         >
-                            {uploading ? (
+                            {uploading && uploadingType === 'logo' ? (
                                 <Loader2 size={18} className="animate-spin" />
                             ) : (
                                 <Upload size={18} />
                             )}
-                            {uploading ? "Uploading..." : "Upload Logo"}
+                            {uploading && uploadingType === 'logo' ? "Uploading..." : "Upload Logo"}
                         </button>
                         <input
                             ref={logoFileInputRef}
@@ -254,8 +266,8 @@ const OrganizationHeader = ({
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-3xl shadow-2xl overflow-hidden mb-8 border border-gray-100"
         >
-            {/* Cover Photo Section */}
-            <div className={`relative aspect-[3/1] md:aspect-[4/1] lg:aspect-[5/1] bg-gradient-to-r ${colors.gradient} overflow-hidden`}>
+            {/* Cover Photo Section - INCREASED HEIGHT */}
+            <div className={`relative h-80 md:h-96 lg:h-[28rem] bg-gradient-to-r ${colors.gradient} overflow-hidden`}>
                 {organization.organization.coverPhoto ? (
                     <div className="absolute inset-0">
                         <img
@@ -271,27 +283,30 @@ const OrganizationHeader = ({
                     <div className={`w-full h-full bg-gradient-to-r ${colors.gradient}`} />
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent" />
+                {/* Enhanced Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
 
-                <div className="absolute inset-0 flex flex-col">
-                    <div className="flex-0 flex justify-between items-start p-4 sm:p-6 lg:p-8">
+                <div className="absolute inset-0 flex flex-col justify-between">
+                    {/* Top Section - Verified Badge */}
+                    <div className="flex-0 p-4 sm:p-6 lg:p-8">
                         {organization.organization.verified && (
-                            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-2xl backdrop-blur-sm border border-white/20">
+                            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-2xl backdrop-blur-sm border border-white/20 w-fit">
                                 <Shield size={14} className="sm:w-4 sm:h-4" />
                                 Verified Organization
                             </div>
                         )}
                     </div>
 
-                    <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-4">
-                        <div className="text-center w-full max-w-6xl">
+                    {/* Center Content - Organization Identity */}
+                    <div className="flex-1 flex items-end pb-8 sm:pb-12 lg:pb-16 px-4 sm:px-6 lg:px-8">
+                        <div className="w-full max-w-6xl">
                             <motion.h1
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.2 }}
-                                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black text-white mb-3 sm:mb-4 leading-tight tracking-tight drop-shadow-2xl"
+                                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black text-white mb-4 sm:mb-6 leading-tight tracking-tight drop-shadow-2xl"
                             >
-                                {organization.name || "Organization Name"}
+                                {organization.organization.name || organization.name || "Organization Name"}
                             </motion.h1>
 
                             {organization.organization.tagline && (
@@ -299,73 +314,74 @@ const OrganizationHeader = ({
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.3 }}
-                                    className="text-base sm:text-lg md:text-xl lg:text-2xl text-white/90 font-light leading-relaxed max-w-3xl sm:max-w-4xl mx-auto mb-4 sm:mb-6 drop-shadow-lg px-2"
+                                    className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/90 font-light leading-relaxed max-w-3xl sm:max-w-4xl mb-6 sm:mb-8 drop-shadow-lg"
                                 >
                                     {organization.organization.tagline}
                                 </motion.p>
                             )}
 
+                            {/* Stats Bar - Moved to bottom with better spacing */}
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.4 }}
-                                className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 px-2"
+                                className="flex flex-wrap gap-3 sm:gap-4 md:gap-6"
                             >
-                                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl border border-white/30">
-                                    <div className="p-1.5 sm:p-2 bg-white/20 rounded-lg">
-                                        <Users size={16} className="sm:w-5 sm:h-5 text-white" />
+                                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-white/30">
+                                    <div className="p-2 bg-white/20 rounded-lg">
+                                        <Users size={18} className="sm:w-6 sm:h-6 text-white" />
                                     </div>
                                     <div className="text-center">
-                                        <div className="text-lg sm:text-xl md:text-2xl font-bold">
+                                        <div className="text-xl sm:text-2xl md:text-3xl font-bold">
                                             {organization.organization.membershipCount || 0}
                                         </div>
-                                        <div className="text-xs sm:text-sm font-medium text-white/90">
+                                        <div className="text-sm sm:text-base font-medium text-white/90">
                                             Members
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl border border-white/30">
-                                    <div className="p-1.5 sm:p-2 bg-white/20 rounded-lg">
-                                        <Calendar size={16} className="sm:w-5 sm:h-5 text-white" />
+                                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-white/30">
+                                    <div className="p-2 bg-white/20 rounded-lg">
+                                        <Calendar size={18} className="sm:w-6 sm:h-6 text-white" />
                                     </div>
                                     <div className="text-center">
-                                        <div className="text-lg sm:text-xl md:text-2xl font-bold">
+                                        <div className="text-xl sm:text-2xl md:text-3xl font-bold">
                                             {organization.organization.founded
                                                 ? new Date(organization.organization.founded).getFullYear()
                                                 : "N/A"}
                                         </div>
-                                        <div className="text-xs sm:text-sm font-medium text-white/90">
+                                        <div className="text-sm sm:text-base font-medium text-white/90">
                                             Established
                                         </div>
                                     </div>
                                 </div>
 
                                 {organization.organization.campus && (
-                                    <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl border border-white/30">
-                                        <div className="p-1.5 sm:p-2 bg-white/20 rounded-lg">
-                                            <MapPin size={16} className="sm:w-5 sm:h-5 text-white" />
+                                    <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-white/30">
+                                        <div className="p-2 bg-white/20 rounded-lg">
+                                            <MapPin size={18} className="sm:w-6 sm:h-6 text-white" />
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-sm sm:text-base md:text-lg font-bold">
+                                            <div className="text-lg sm:text-xl md:text-2xl font-bold">
                                                 {organization.organization.campus}
                                             </div>
-                                            <div className="text-xs sm:text-sm font-medium text-white/90">
+                                            <div className="text-sm sm:text-base font-medium text-white/90">
                                                 Campus
                                             </div>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl border border-white/30">
-                                    <div className="p-1.5 sm:p-2 bg-white/20 rounded-lg">
-                                        <Building2 size={16} className="sm:w-5 sm:h-5 text-white" />
+                                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-white/30">
+                                    <div className="p-2 bg-white/20 rounded-lg">
+                                        <Building2 size={18} className="sm:w-6 sm:h-6 text-white" />
                                     </div>
                                     <div className="text-center">
-                                        <div className="text-sm sm:text-base md:text-lg font-bold">
+                                        <div className="text-lg sm:text-xl md:text-2xl font-bold">
                                             {organization.organization.type || "Organization"}
                                         </div>
-                                        <div className="text-xs sm:text-sm font-medium text-white/90">
+                                        <div className="text-sm sm:text-base font-medium text-white/90">
                                             Type
                                         </div>
                                     </div>
