@@ -29,6 +29,7 @@ import Reports from "../pages/dashboard/superAdmin/Reports";
 import AdminProfile from "../pages/dashboard/superAdmin/AdminProfile";
 import MyProfile from "../pages/dashboard/student/MyProfile";
 import OrganizationRoot from "../pages/dashboard/Organization/OrganizationRoot";
+import EventCreationRoot from "../pages/dashboard/Organization/eventCreation/EventCreationRoot";
 
 export const router = createBrowserRouter([
   {
@@ -95,7 +96,7 @@ export const router = createBrowserRouter([
         
         // Organization Routes
         {
-            path:'org-create-event' , element: <EventCreation/>
+            path:'org-create-event' , element: <EventCreationRoot/>
         },
         {
             path: 'org-profile', element: <OrganizationRoot/>
