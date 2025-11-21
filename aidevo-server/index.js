@@ -231,6 +231,10 @@ async function run() {
           photoURL: user.photoURL,
         };
 
+        if( user.role === "organization") {
+          userInfo.organizationName = user.organization.name;
+        }
+
         res.json(userInfo);
       } catch (err) {
         res.status(500).json({
