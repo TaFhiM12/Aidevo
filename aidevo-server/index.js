@@ -228,6 +228,7 @@ async function run() {
           organizationId: user._id.toString(),
           studentId: user._id.toString(),
           name: user.name,
+          email: user.email,
           photoURL: user.photoURL,
         };
 
