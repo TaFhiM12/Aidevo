@@ -10,9 +10,9 @@ const server = http.createServer(app);
 const port = 3000;
 
 const allowedOrigins = [
-  "http://localhost:5173", 
+  "http://localhost:5173",
   "http://localhost:3000",
-  "http://127.0.0.1:5173"
+  "http://127.0.0.1:5173",
 ];
 
 const io = socketIo(server, {
@@ -21,7 +21,7 @@ const io = socketIo(server, {
     methods: ["GET", "POST"],
     credentials: true,
   },
-  transports: ['websocket', 'polling'] // Add this
+  transports: ["websocket", "polling"], // Add this
 });
 
 app.use(
@@ -228,7 +228,7 @@ async function run() {
           organizationId: user._id.toString(),
           studentId: user._id.toString(),
           name: user.name,
-          photoURL: user.photoURL
+          photoURL: user.photoURL,
         };
 
         res.json(userInfo);
@@ -1466,6 +1466,260 @@ async function run() {
       }
     });
 
+    // app.get("/user-info/:email", async (req, res) => {
+    //   const userEmail = req.params.email;
+    //   const UserInfo = await usersCollection.findOne({ email: userEmail });
+    //   if (UserInfo) {
+    //     res.json({
+    //       success: true,
+    //       user: UserInfo,
+    //     });
+    //   } else {
+    //     res.status(404).json({
+    //       success: false,
+    //       message: "User not found",
+    //     });
+    //   }
+    //   res.send(UserInfo);
+    // });
+    // Get student by email
+    app.get("/user-info/:email", async (req, res) => {
+      try {
+        const userEmail = req.params.email;
+        const UserInfo = await usersCollection.findOne({ email: userEmail });
+
+        if (UserInfo) {
+          res.json({
+            success: true,
+            user: UserInfo,
+          });
+        } else {
+          res.status(404).json({
+            success: false,
+            message: "User not found",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch user information",
+        });
+      }
+    });
+
+    // Update student field
+    app.patch("/students/:studentId/field", async (req, res) => {
+      try {
+        const { studentId } = req.params;
+        const { field, value } = req.body;
+
+        console.log("Updating student field:", field, "to:", value);
+
+        if (!ObjectId.isValid(studentId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid student ID",
+          });
+        }
+
+        // Build the update path for nested fields
+        let updatePath = {};
+        if (field.startsWith("student.")) {
+          const nestedField = field.replace("student.", "");
+          updatePath[`student.${nestedField}`] = value;
+        } else {
+          updatePath[field] = value;
+        }
+
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(studentId), role: "student" },
+          { $set: updatePath }
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Student not found",
+          });
+        }
+
+        // Get updated student
+        const updatedStudent = await usersCollection.findOne({
+          _id: new ObjectId(studentId),
+        });
+
+        res.json({
+          success: true,
+          message: "Field updated successfully",
+          student: updatedStudent,
+        });
+      } catch (error) {
+        console.error("Error updating student field:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update field",
+          error: error.message,
+        });
+      }
+    });
+
+    // Update student profile
+    app.put("/students/:studentId/profile", async (req, res) => {
+      try {
+        const { studentId } = req.params;
+        const updateData = req.body;
+
+        if (!ObjectId.isValid(studentId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid student ID",
+          });
+        }
+
+        // Check if student exists
+        const existingStudent = await usersCollection.findOne({
+          _id: new ObjectId(studentId),
+          role: "student",
+        });
+
+        if (!existingStudent) {
+          return res.status(404).json({
+            success: false,
+            message: "Student not found",
+          });
+        }
+
+        // Prepare update fields - merge with existing data
+        const updateFields = {};
+
+        if (updateData.student) {
+          updateFields.student = {
+            ...existingStudent.student,
+            ...updateData.student,
+          };
+        }
+
+        if (updateData.name) {
+          updateFields.name = updateData.name;
+        }
+
+        if (updateData.photoURL) {
+          updateFields.photoURL = updateData.photoURL;
+        }
+
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(studentId), role: "student" },
+          { $set: updateFields }
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Student not found for update",
+          });
+        }
+
+        // Get updated student
+        const updatedStudent = await usersCollection.findOne({
+          _id: new ObjectId(studentId),
+        });
+
+        res.json({
+          success: true,
+          message: "Profile updated successfully",
+          student: updatedStudent,
+        });
+      } catch (error) {
+        console.error("Error updating student profile:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update profile",
+          error: error.message,
+        });
+      }
+    });
+
+
+
+    //organization type base 
+    // Add photo to album
+app.post('/organizations/:organizationId/photo-album', async (req, res) => {
+    try {
+        const { organizationId } = req.params;
+        const { photos } = req.body;
+
+        if (!ObjectId.isValid(organizationId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid organization ID"
+            });
+        }
+
+        const result = await usersCollection.updateOne(
+            { _id: new ObjectId(organizationId), role: "organization" },
+            { $set: { "organization.photoAlbum": photos } }
+        );
+
+        if (result.matchedCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Organization not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Photo album updated successfully"
+        });
+    } catch (error) {
+        console.error("Error updating photo album:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update photo album"
+        });
+    }
+});
+
+// Get organization photo album
+app.get('/organizations/:organizationId/photo-album', async (req, res) => {
+    try {
+        const { organizationId } = req.params;
+
+        if (!ObjectId.isValid(organizationId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid organization ID"
+            });
+        }
+
+        const organization = await usersCollection.findOne(
+            { _id: new ObjectId(organizationId), role: "organization" },
+            { projection: { "organization.photoAlbum": 1 } }
+        );
+
+        if (!organization) {
+            return res.status(404).json({
+                success: false,
+                message: "Organization not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            photoAlbum: organization.organization?.photoAlbum || []
+        });
+    } catch (error) {
+        console.error("Error fetching photo album:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch photo album"
+        });
+    }
+});
+
+
+    
     console.log("✅ Connected to MongoDB successfully!");
   } catch (err) {
     console.error("❌ MongoDB connection failed:", err);
