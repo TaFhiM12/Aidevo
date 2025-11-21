@@ -27,6 +27,8 @@ import UserManagement from "../pages/dashboard/superAdmin/UserManagement";
 import AllAnalytics from "../pages/dashboard/superAdmin/AllAnalytics";
 import Reports from "../pages/dashboard/superAdmin/Reports";
 import AdminProfile from "../pages/dashboard/superAdmin/AdminProfile";
+import MyProfile from "../pages/dashboard/student/MyProfile";
+import OrganizationRoot from "../pages/dashboard/Organization/OrganizationRoot";
 
 export const router = createBrowserRouter([
   {
@@ -85,7 +87,7 @@ export const router = createBrowserRouter([
             path: 'my-recommendations', element: <div>Student AI Recommendations</div>
         },
         {
-            path: 'student-profile', element: <div>Student Profile</div>
+            path: 'student-profile', element: <MyProfile/>
         },
         {
             path: 'student-settings', element: <div>Student Settings</div>
@@ -96,7 +98,7 @@ export const router = createBrowserRouter([
             path:'org-create-event' , element: <EventCreation/>
         },
         {
-            path: 'org-profile', element: <OrganizationProfile/>
+            path: 'org-profile', element: <OrganizationRoot/>
         },
         {
             path: 'org-events', element: <OrganizationEvents/>

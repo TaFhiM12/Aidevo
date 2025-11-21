@@ -17,6 +17,7 @@ import {
   Shield,
   Users,
   Target,
+  Heart,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
@@ -58,6 +59,7 @@ export default function SignUp() {
     studentId: "",
     department: "",
     session: "",
+    interests: "", // New field added
   });
 
   const {
@@ -69,12 +71,10 @@ export default function SignUp() {
 
   const orgTypes = [
     "Club",
-    "NGO",
-    "Department",
-    "Community",
-    "Society",
+    "Social Service",
     "Association",
   ];
+  
   const campuses = [
     "Main Campus",
     "North Campus",
@@ -118,6 +118,24 @@ export default function SignUp() {
     const year = new Date().getFullYear() - i;
     return `${year}-${year + 1}`;
   });
+
+  const interestsOptions = [
+    "Charity & Volunteering",
+    "Clubs & Societies",
+    "Associations",
+    "Sports & Athletics",
+    "Cultural Activities",
+    "Technical & Coding",
+    "Research & Innovation",
+    "Entrepreneurship",
+    "Arts & Creativity",
+    "Leadership & Development",
+    "Community Service",
+    "Environmental Causes",
+    "Education & Tutoring",
+    "Professional Development",
+    "Social Events",
+  ];
 
   // Handle photo upload
   const handlePhotoUpload = async (file) => {
@@ -380,6 +398,7 @@ export default function SignUp() {
                 studentId: formData.studentId,
                 department: formData.department,
                 session: formData.session,
+                interests: formData.interests, // Added interests field
                 year: new Date().getFullYear(),
                 status: "active",
                 verified: false,
@@ -1083,6 +1102,37 @@ export default function SignUp() {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* New Interests Field */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Interests
+                    </label>
+                    <div className="flex items-center border border-gray-300 rounded-xl px-4 py-3 bg-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                      <Heart className="text-gray-400 mr-3" size={18} />
+                      <select
+                        value={formData.interests}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            interests: e.target.value,
+                          }))
+                        }
+                        disabled={loading}
+                        className="w-full outline-none text-gray-700 bg-transparent"
+                      >
+                        <option value="">Select your interests</option>
+                        {interestsOptions.map((interest) => (
+                          <option key={interest} value={interest}>
+                            {interest}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      What type of organizations are you interested in?
+                    </p>
                   </div>
                 </div>
               )}
