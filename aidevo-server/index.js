@@ -234,6 +234,7 @@ async function run() {
 
         if( user.role === "organization") {
           userInfo.organizationName = user.organization.name;
+          userInfo.type = user.organization.type;
         }
 
         res.json(userInfo);
@@ -1721,6 +1722,81 @@ app.get('/organizations/:organizationId/photo-album', async (req, res) => {
             message: "Failed to fetch photo album"
         });
     }
+});
+
+  app.get('/organization-events/:email', async (req, res) => {
+    try {
+      const organizationEmail = req.params.email;
+      const events = await eventsCollection
+        .find({ organizationEmail: organizationEmail })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.json({
+        success: true,
+        events: events,
+      });
+    } catch (err) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch organization events',
+        error: err.message,
+      });
+    }
+  });
+
+  // Delete event by ID
+app.delete('/events/:eventId', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+
+    console.log('Deleting event:', eventId);
+
+    if (!ObjectId.isValid(eventId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid event ID'
+      });
+    }
+
+    // Find the event first to check if it exists
+    const event = await eventsCollection.findOne({
+      _id: new ObjectId(eventId)
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found'
+      });
+    }
+
+    // Delete the event
+    const result = await eventsCollection.deleteOne({
+      _id: new ObjectId(eventId)
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found or already deleted'
+      });
+    }
+
+    console.log('Event deleted successfully:', eventId);
+
+    res.json({
+      success: true,
+      message: 'Event deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete event',
+      error: error.message
+    });
+  }
 });
 
 
