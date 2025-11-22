@@ -70,6 +70,42 @@ const OrganizationHeader = ({
 
     const colors = themeColors[theme] || themeColors.blue;
 
+    // Role types configuration
+    const roleTypes = {
+        "Club": [
+            "Debate Club",
+            "Sports Club", 
+            "Robotics Club",
+            "Photographic Club",
+            "Cultural Club",
+            "Programming Club",
+            "Music Club",
+            "Drama Club",
+            "Art Club",
+            "Literature Club"
+        ],
+        "Social Service": [
+            "Blood Bank",
+            "Unnotomomoshir",
+            "Community Service",
+            "Environmental Service",
+            "Educational Support",
+            "Disaster Relief",
+            "Health Awareness",
+            "Poverty Alleviation"
+        ],
+        "Association": [
+            "Sylhet Association",
+            "Dhaka Association", 
+            "Khulna Association",
+            "Chittagong Association",
+            "Rajshahi Association",
+            "Barisal Association",
+            "Rangpur Association",
+            "Mymensingh Association"
+        ]
+    };
+
     const handleImageUpload = async (file, type) => {
         try {
             setUploading(true);
@@ -373,7 +409,7 @@ const OrganizationHeader = ({
                                     </div>
                                 )}
 
-                                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-white/30">
+                                {/* <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-white/30">
                                     <div className="p-2 bg-white/20 rounded-lg">
                                         <Building2 size={18} className="sm:w-6 sm:h-6 text-white" />
                                     </div>
@@ -385,7 +421,24 @@ const OrganizationHeader = ({
                                             Type
                                         </div>
                                     </div>
-                                </div>
+                                </div> */}
+
+                                {/* New Role Type Badge */}
+                                {organization.organization.roleType && (
+                                    <div className="flex items-center gap-2 bg-white/20 backdrop-blur-lg text-white px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl border border-white/30">
+                                        <div className="p-2 bg-white/20 rounded-lg">
+                                            <Award size={18} className="sm:w-6 sm:h-6 text-white" />
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-lg sm:text-xl md:text-2xl font-bold">
+                                                {organization.organization.roleType}
+                                            </div>
+                                            <div className="text-sm sm:text-base font-medium text-white/90">
+                                                Sub-type
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </motion.div>
                         </div>
                     </div>
@@ -514,22 +567,25 @@ const OrganizationHeader = ({
                                 className="text-base"
                                 type="select"
                                 options={[
-                                    "Academic Club",
-                                    "Sports Club",
-                                    "Cultural Club",
-                                    "NGO",
-                                    "Department",
-                                    "Community",
-                                    "Society",
-                                    "Association",
-                                    "Team",
-                                    "Volunteer Group",
-                                    "Professional Association",
-                                    "Student Union",
-                                    "Research Group",
+                                    "Club",
+                                    "Social Service",
+                                    "Association"
                                 ]}
                                 loading={savingField === "organization.type"}
                                 label="Organization Type"
+                            />
+
+                            {/* New Role Type Field */}
+                            <InlineEditField
+                                value={organization.organization.roleType || ""}
+                                onSave={(value) => onFieldUpdate("organization.roleType", value)}
+                                className="text-base"
+                                type="select"
+                                options={roleTypes[organization.organization.type] || []}
+                                disabled={!organization.organization.type}
+                                loading={savingField === "organization.roleType"}
+                                label="Organization Sub-type"
+                                placeholder={organization.organization.type ? `Select ${organization.organization.type} type` : "Select organization type first"}
                             />
 
                             <InlineEditField

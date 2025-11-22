@@ -50,6 +50,7 @@ export default function SignUp() {
     confirmPassword: "",
     orgName: "",
     orgType: "",
+    roleType: "", // New field added
     tagline: "",
     founded: "",
     website: "",
@@ -59,7 +60,7 @@ export default function SignUp() {
     studentId: "",
     department: "",
     session: "",
-    interests: "", // New field added
+    interests: "",
   });
 
   const {
@@ -75,6 +76,42 @@ export default function SignUp() {
     "Association",
   ];
   
+  // Role types configuration
+  const roleTypes = {
+    "Club": [
+      "Debate Club",
+      "Sports Club", 
+      "Robotics Club",
+      "Photographic Club",
+      "Cultural Club",
+      "Programming Club",
+      "Music Club",
+      "Drama Club",
+      "Art Club",
+      "Literature Club"
+    ],
+    "Social Service": [
+      "Blood Bank",
+      "Unnotomomoshir",
+      "Community Service",
+      "Environmental Service",
+      "Educational Support",
+      "Disaster Relief",
+      "Health Awareness",
+      "Poverty Alleviation"
+    ],
+    "Association": [
+      "Sylhet Association",
+      "Dhaka Association", 
+      "Khulna Association",
+      "Chittagong Association",
+      "Rajshahi Association",
+      "Barisal Association",
+      "Rangpur Association",
+      "Mymensingh Association"
+    ]
+  };
+
   const campuses = [
     "Main Campus",
     "North Campus",
@@ -334,6 +371,12 @@ export default function SignUp() {
         setLoading(false);
         return;
       }
+      if (!formData.roleType) {
+        setError("Please select organization sub-type");
+        toast.error("Please select organization sub-type");
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -382,6 +425,7 @@ export default function SignUp() {
               organization: {
                 name: formData.orgName,
                 type: formData.orgType,
+                roleType: formData.roleType, // Add roleType here
                 tagline: formData.tagline,
                 founded: formData.founded,
                 website: formData.website,
@@ -398,7 +442,7 @@ export default function SignUp() {
                 studentId: formData.studentId,
                 department: formData.department,
                 session: formData.session,
-                interests: formData.interests, // Added interests field
+                interests: formData.interests,
                 year: new Date().getFullYear(),
                 status: "active",
                 verified: false,
@@ -880,12 +924,13 @@ export default function SignUp() {
                       </label>
                       <select
                         value={formData.orgType}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           setFormData((prev) => ({
                             ...prev,
                             orgType: e.target.value,
-                          }))
-                        }
+                            roleType: "", // Reset roleType when orgType changes
+                          }));
+                        }}
                         disabled={loading}
                         className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
                         required
@@ -898,6 +943,37 @@ export default function SignUp() {
                         ))}
                       </select>
                     </div>
+                  </div>
+
+                  {/* New Role Type Field */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Organization Sub-type *
+                    </label>
+                    <select
+                      value={formData.roleType}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          roleType: e.target.value,
+                        }))
+                      }
+                      disabled={loading || !formData.orgType}
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all disabled:bg-gray-50 disabled:cursor-not-allowed"
+                      required
+                    >
+                      <option value="">Select {formData.orgType} Type</option>
+                      {formData.orgType && roleTypes[formData.orgType]?.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                    {!formData.orgType && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Please select organization type first
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">

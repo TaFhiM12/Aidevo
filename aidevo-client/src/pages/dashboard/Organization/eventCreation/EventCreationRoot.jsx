@@ -25,26 +25,8 @@ const EventCreationRoot = () => {
         return <BloodBankEventCreation />;
     } else if (orgName.includes('debate') || orgName === 'just debate club') {
         return <DebateClubEventCreation />;
-    } else if (userInfo?.organizationType === 'association' || orgName.includes('association')) {
-        return <AssociationEventCreation />;
-    } else {
-        // Default event creation for other organizations
-        return (
-            <div className="min-h-screen bg-gray-50 pb-10 px-4">
-                <div className="max-w-4xl mx-auto">
-                    <div className="bg-white rounded-lg shadow-sm p-6 mt-6 border-l-4 border-purple-500">
-                        <h1 className="text-2xl font-bold text-gray-800 mb-2">
-                            🎯 Create Event
-                        </h1>
-                        <p className="text-gray-600">
-                            Organize an event for your organization
-                        </p>
-                    </div>
-                    {/* You can import and use your general EventCreation component here */}
-                </div>
-            </div>
-        );
-    }
+    } else return <AssociationEventCreation />;
+    
 };
 
 export default EventCreationRoot;

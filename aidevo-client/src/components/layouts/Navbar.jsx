@@ -175,7 +175,11 @@ const Navbar = () => {
                       className="w-8 h-8 rounded-full object-cover border-2 border-blue-400 group-hover:border-blue-500"
                     />
                     <span className="text-gray-700 font-medium max-w-32 truncate">
-                      {userInfo?.name || 'User'}
+                      {
+                        userInfo?.role === 'organization'
+                          ? userInfo?.organizationName || 'Organization'
+                          : userInfo?.name || 'User'
+                      }
                     </span>
                   </button>
                   
@@ -255,7 +259,11 @@ const Navbar = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">
-                      {userInfo?.name || 'User'}
+                      {
+                        userInfo?.role === 'organization'
+                          ? userInfo?.organizationName || 'Organization'
+                          : userInfo?.name || 'User'
+                      }
                     </p>
                     <p className="text-xs text-gray-600 truncate">
                       {user.email}

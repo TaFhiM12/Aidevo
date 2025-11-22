@@ -25,14 +25,17 @@ import {
   Droplets
 } from "lucide-react";
 import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary";
+import useAuth from "../../../../hooks/useAuth";
 
 const BloodBankEventCreation = () => {
+  const {user} = useAuth();
   const [formData, setFormData] = useState({
     // Basic Information
     title: "",
     shortDesc: "",
     longDesc: "",
-    organization: "Blood Bank",
+    organizationEmail: user?.email || "",
+    organization: "Just Blood Bank",
     
     // Event Type & Category
     type: "on-campus",

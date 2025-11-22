@@ -25,14 +25,17 @@ import {
   Gavel
 } from "lucide-react";
 import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary";
+import useAuth from "../../../../hooks/useAuth";
 
 const DebateClubEventCreation = () => {
+  const {user} = useAuth();
   const [formData, setFormData] = useState({
     // Basic Information
     title: "",
     shortDesc: "",
     longDesc: "",
-    organization: "Debating Club",
+    organizationEmail: user?.email || "",
+    organization: "Just Debate Club",
     
     // Event Type & Category
     type: "on-campus",
