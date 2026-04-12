@@ -21,6 +21,7 @@ import ApplicationModal from '../../components/layouts/ApplicationModal';
 import useAuth from '../../hooks/useAuth';
 import useUserRole from '../../hooks/useUserRole';
 import Loading from '../../components/common/Loading';
+import API from '../../utils/api';
 
 const Organization = () => {
   const { user } = useAuth();
@@ -56,50 +57,59 @@ const Organization = () => {
   }, [organizations, searchTerm, selectedType, selectedCampus]);
 
   const fetchOrganizations = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      console.log('Fetching organizations...');
-      let response;
-      try {
-        response = await axios.get('http://localhost:3000/organizations-with-applications');
-      } catch (endpointError) {
-        console.log('Enhanced endpoint failed, trying basic endpoint...');
-        response = await axios.get('http://localhost:3000/organizations');
-        response.data.organizations = response.data.organizations.map(org => ({
-          ...org,
-          applicationCount: 0
-        }));
-      }
-      
-      console.log('Organizations fetched:', response.data.organizations.length);
-      setOrganizations(response.data.organizations);
-    } catch (error) {
-      console.error('Error fetching organizations:', error);
-      setError('Failed to load organizations. Please try again.');
-      setOrganizations([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    setError("");
 
-  const fetchUserApplications = async () => {
-    if (!user) return;
-    
+    console.log("Fetching organizations...");
+
+    let organizationsData = [];
+
     try {
-      setApplicationsLoading(true);
-      console.log('Fetching user applications for student:', user.uid);
-      
-      const response = await axios.get(`http://localhost:3000/students/${user.uid}/applications`);
-      console.log('User applications fetched:', response.data.applications.length);
-      setUserApplications(response.data.applications);
-    } catch (error) {
-      console.error('Error fetching user applications:', error);
-    } finally {
-      setApplicationsLoading(false);
+      const response = await API.get("/organizations/with-applications");
+      organizationsData = Array.isArray(response.data) ? response.data : [];
+    } catch (e) {
+      console.log("Enhanced endpoint failed, trying basic endpoint...");
+      console.log(e)
+      const response = await API.get("/organizations");
+      const basicOrganizations = Array.isArray(response.data) ? response.data : [];
+
+      organizationsData = basicOrganizations.map((org) => ({
+        ...org,
+        applicationCount: 0,
+      }));
     }
-  };
+
+    console.log("Organizations fetched:", organizationsData.length);
+    setOrganizations(organizationsData);
+  } catch (error) {
+    console.error("Error fetching organizations:", error);
+    setError("Failed to load organizations. Please try again.");
+    setOrganizations([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const fetchUserApplications = async () => {
+  if (!user) return;
+
+  try {
+    setApplicationsLoading(true);
+    console.log("Fetching user applications for student:", user.uid);
+
+    const response = await API.get(`/students/${user.uid}/applications`);
+    const applicationsData = Array.isArray(response.data) ? response.data : [];
+
+    console.log("User applications fetched:", applicationsData.length);
+    setUserApplications(applicationsData);
+  } catch (error) {
+    console.error("Error fetching user applications:", error);
+    setUserApplications([]);
+  } finally {
+    setApplicationsLoading(false);
+  }
+};
 
   const filterOrganizations = () => {
     let filtered = organizations;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from 'react-hot-toast';
-import Swal from 'sweetalert2';
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 
 import {
   Calendar,
@@ -18,17 +18,18 @@ import {
   Star,
   Edit3,
 } from "lucide-react";
-import axios from "axios";
-import useUserRole from '../../../hooks/useUserRole';
+import useUserRole from "../../../hooks/useUserRole";
 import AssociationEventDetails from "./shared/AssociationEventDetails";
 import ClubEventDetails from "./shared/ClubEventDetails";
 import SocialServiceEventDetails from "./shared/SocialServiceEventDetails";
+import Loading from "../../../components/common/Loading";
+import API from "../../../utils/api";
 
 const OrganizationEvents = () => {
   const { userInfo } = useUserRole();
   const email = userInfo?.email;
   const type = userInfo?.type;
-  const organizationName = userInfo?.organization?.name || userInfo?.name;
+  // const organizationName = userInfo?.organization?.name || userInfo?.name;
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,98 +46,105 @@ const OrganizationEvents = () => {
   }, [email]);
 
   const fetchOrganizationEvents = async () => {
-    try {
-      const response = await axios.get(`http://localhost:3000/organization-events/${email}`);
-      if (response.data.success) {
-        setEvents(response.data.events);
-      }
-    } catch (error) {
-      console.error("Error fetching organization events:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
 
+    const response = await API.get("/events");
+    const allEvents = Array.isArray(response.data) ? response.data : [];
 
+    const orgEvents = allEvents.filter(
+      (event) => event.organizationEmail === email
+    );
 
+    setEvents(orgEvents);
+  } catch (error) {
+    console.error("Error fetching organization events:", error);
+    setEvents([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
 const handleDeleteEvent = async (eventId) => {
-  const eventTitle = events.find(event => event._id === eventId)?.title || 'this event';
-  
-  Swal.fire({
-    title: 'Are you sure?',
+  const eventTitle =
+    events.find((event) => event._id === eventId)?.title || "this event";
+
+  const result = await Swal.fire({
+    title: "Are you sure?",
     text: `You are about to delete "${eventTitle}". This action cannot be undone!`,
-    icon: 'warning',
+    icon: "warning",
     showCancelButton: true,
-    confirmButtonColor: '#d33',
-    cancelButtonColor: '#3085d6',
-    confirmButtonText: 'Yes, delete it!',
-    cancelButtonText: 'Cancel',
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Yes, delete it!",
+    cancelButtonText: "Cancel",
     reverseButtons: true,
-    background: '#fff',
+    background: "#fff",
     customClass: {
-      popup: 'rounded-2xl shadow-2xl',
-      title: 'text-xl font-bold text-gray-900',
-      htmlContainer: 'text-gray-600',
-      confirmButton: 'px-6 py-3 rounded-lg font-semibold',
-      cancelButton: 'px-6 py-3 rounded-lg font-semibold'
-    }
-  }).then(async (result) => {
-    if (result.isConfirmed) {
-      const deleteToast = toast.loading('Deleting event...');
-      
-      try {
-        await axios.delete(`http://localhost:3000/events/${eventId}`);
-        
-        // Remove the event from state
-        setEvents(events.filter(event => event._id !== eventId));
-        
-        // Success notification
-        toast.success('Event deleted successfully!', {
-          id: deleteToast,
-          duration: 3000,
-        });
-        
-        // Optional: Show success Swal as well
-        Swal.fire({
-          title: 'Deleted!',
-          text: 'Your event has been deleted successfully.',
-          icon: 'success',
-          confirmButtonColor: '#10b981',
-          background: '#fff',
-          customClass: {
-            popup: 'rounded-2xl shadow-2xl',
-            title: 'text-xl font-bold text-gray-900',
-          }
-        });
-        
-      } catch (error) {
-        console.error("Error deleting event:", error);
-        
-        // Error notification
-        toast.error(
-          error.response?.data?.message || 'Failed to delete event', 
-          {
-            id: deleteToast,
-            duration: 4000,
-          }
-        );
-        
-        // Show error Swal
-        Swal.fire({
-          title: 'Error!',
-          text: error.response?.data?.message || 'Failed to delete event. Please try again.',
-          icon: 'error',
-          confirmButtonColor: '#ef4444',
-          background: '#fff',
-          customClass: {
-            popup: 'rounded-2xl shadow-2xl',
-            title: 'text-xl font-bold text-gray-900',
-          }
-        });
-      }
-    }
+      popup: "rounded-2xl shadow-2xl",
+      title: "text-xl font-bold text-gray-900",
+      htmlContainer: "text-gray-600",
+      confirmButton: "px-6 py-3 rounded-lg font-semibold",
+      cancelButton: "px-6 py-3 rounded-lg font-semibold",
+    },
   });
+
+  if (!result.isConfirmed) return;
+
+  const deleteToast = toast.loading("Deleting event...");
+
+  try {
+    const response = await API.delete(`/events/${eventId}`);
+
+    if (response.success) {
+      setEvents((prevEvents) =>
+        prevEvents.filter((event) => event._id !== eventId)
+      );
+
+      toast.success("Event deleted successfully!", {
+        id: deleteToast,
+        duration: 3000,
+      });
+
+      await Swal.fire({
+        title: "Deleted!",
+        text: "Your event has been deleted successfully.",
+        icon: "success",
+        confirmButtonColor: "#10b981",
+        background: "#fff",
+        customClass: {
+          popup: "rounded-2xl shadow-2xl",
+          title: "text-xl font-bold text-gray-900",
+        },
+      });
+    } else {
+      throw new Error(response.message || "Failed to delete event");
+    }
+  } catch (error) {
+    console.error("Error deleting event:", error);
+
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Failed to delete event. Please try again.";
+
+    toast.error(errorMessage, {
+      id: deleteToast,
+      duration: 4000,
+    });
+
+    await Swal.fire({
+      title: "Error!",
+      text: errorMessage,
+      icon: "error",
+      confirmButtonColor: "#ef4444",
+      background: "#fff",
+      customClass: {
+        popup: "rounded-2xl shadow-2xl",
+        title: "text-xl font-bold text-gray-900",
+      },
+    });
+  }
 };
 
   const handleViewDetails = (event) => {
@@ -146,10 +154,12 @@ const handleDeleteEvent = async (eventId) => {
 
   // Filter events
   const filteredEvents = events.filter((event) => {
-    const matchesSearch = event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.shortDesc?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = selectedStatus === "all" || event.status === selectedStatus;
-    
+    const matchesSearch =
+      event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.shortDesc?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      selectedStatus === "all" || event.status === selectedStatus;
+
     return matchesSearch && matchesStatus;
   });
 
@@ -211,7 +221,7 @@ const handleDeleteEvent = async (eventId) => {
         ) : (
           <div
             className={`w-full h-full bg-gradient-to-br ${getCategoryColor(
-              event.category
+              event.category,
             )} flex items-center justify-center`}
           >
             <Building className="w-12 h-12 text-white" />
@@ -223,7 +233,9 @@ const handleDeleteEvent = async (eventId) => {
 
         {/* Status Badge */}
         <div className="absolute top-4 left-4">
-          <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${getStatusColor(event.status)}`}>
+          <span
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold ${getStatusColor(event.status)}`}
+          >
             {event.status}
           </span>
         </div>
@@ -327,61 +339,13 @@ const handleDeleteEvent = async (eventId) => {
   );
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 px-4 pb-12">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((n) => (
-                <div key={n} className="bg-white rounded-2xl shadow-lg p-6 h-[520px] flex flex-col">
-                  <div className="h-48 bg-gray-200 rounded-xl mb-4 flex-shrink-0"></div>
-                  <div className="flex-1 space-y-4">
-                    <div className="h-6 bg-gray-200 rounded"></div>
-                    <div className="h-4 bg-gray-200 rounded"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-gray-200 rounded"></div>
-                      <div className="h-4 bg-gray-200 rounded"></div>
-                      <div className="h-4 bg-gray-200 rounded"></div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200 mt-4">
-                    <div className="h-10 bg-gray-200 rounded w-24"></div>
-                    <div className="flex gap-2">
-                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                      <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <Loading />;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 px-4 pb-24">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            My Organization
-            <span className="bg-gradient-to-r from-blue-500 to-cyan-500 bg-clip-text text-transparent">
-              {" "}
-              Events
-            </span>
-          </h1>
-          <p className="text-lg text-gray-600">
-            Manage and view all events created by {organizationName}
-          </p>
-        </motion.div>
 
         {/* Search and Filters Section */}
         <motion.div
@@ -542,11 +506,11 @@ const handleDeleteEvent = async (eventId) => {
 const EventDetailsModal = ({ event, onClose, organizationType }) => {
   const renderEventDetails = () => {
     switch (organizationType) {
-      case 'Association':
+      case "Association":
         return <AssociationEventDetails event={event} />;
-      case 'Club':
+      case "Club":
         return <ClubEventDetails event={event} />;
-      case 'Social Service':
+      case "Social Service":
         return <SocialServiceEventDetails event={event} />;
       default:
         return <DefaultEventDetails event={event} />;
@@ -596,25 +560,33 @@ const DefaultEventDetails = ({ event }) => (
     {/* Basic Information */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Basic Information
+        </h3>
         <div className="space-y-3">
           <div>
             <label className="text-sm font-medium text-gray-500">Title</label>
             <p className="text-gray-900">{event.title}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Description</label>
+            <label className="text-sm font-medium text-gray-500">
+              Description
+            </label>
             <p className="text-gray-900">{event.shortDesc}</p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Category</label>
+            <label className="text-sm font-medium text-gray-500">
+              Category
+            </label>
             <p className="text-gray-900 capitalize">{event.category}</p>
           </div>
         </div>
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Details</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Event Details
+        </h3>
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-400" />
@@ -625,7 +597,8 @@ const DefaultEventDetails = ({ event }) => (
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-400" />
             <span className="text-gray-900">
-              {new Date(event.startAt).toLocaleTimeString()} - {new Date(event.endAt).toLocaleTimeString()}
+              {new Date(event.startAt).toLocaleTimeString()} -{" "}
+              {new Date(event.endAt).toLocaleTimeString()}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -634,7 +607,9 @@ const DefaultEventDetails = ({ event }) => (
           </div>
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-900">Capacity: {event.maxCapacity || 'Unlimited'}</span>
+            <span className="text-gray-900">
+              Capacity: {event.maxCapacity || "Unlimited"}
+            </span>
           </div>
         </div>
       </div>
@@ -643,7 +618,9 @@ const DefaultEventDetails = ({ event }) => (
     {/* Additional Information */}
     {event.longDesc && (
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Detailed Description</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Detailed Description
+        </h3>
         <p className="text-gray-700 leading-relaxed">{event.longDesc}</p>
       </div>
     )}
@@ -651,11 +628,15 @@ const DefaultEventDetails = ({ event }) => (
     {/* Contact Information */}
     {(event.contactName || event.contactEmail || event.contactPhone) && (
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Contact Information
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {event.contactName && (
             <div>
-              <label className="text-sm font-medium text-gray-500">Contact Person</label>
+              <label className="text-sm font-medium text-gray-500">
+                Contact Person
+              </label>
               <p className="text-gray-900">{event.contactName}</p>
             </div>
           )}

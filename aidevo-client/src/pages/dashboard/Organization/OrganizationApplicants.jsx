@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import useAuth from "../../../hooks/useAuth";
 import useUserRole from "../../../hooks/useUserRole";
+import API from "../../../utils/api";
 
 const OrganizationApplicants = () => {
   const { user } = useAuth();
@@ -51,25 +52,31 @@ const OrganizationApplicants = () => {
   }, [applications, searchTerm, selectedStatus]);
 
   const fetchApplications = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  try {
+    setLoading(true);
+    setError("");
 
-      // console.log('Fetching applications for organization:', user.uid);
-
-      const response = await axios.get(
-        `http://localhost:3000/organizations/${user.uid}/applications`
-      );
-      
-      // console.log('Applications fetched:', response.data.applications.length);
-      setApplications(response.data.applications);
-    } catch (error) {
-      console.error("Error fetching applications:", error);
-      setError("Failed to load applications. Please try again.");
-    } finally {
-      setLoading(false);
+    if (!userInfo?.organizationId) {
+      throw new Error("Organization ID not found");
     }
-  };
+
+    const response = await API.get(
+      `/organizations/by-id/${userInfo.organizationId}/applications`
+    );
+
+    const applicationsData = Array.isArray(response.data)
+      ? response.data
+      : [];
+
+    setApplications(applicationsData);
+  } catch (error) {
+    console.error("Error fetching applications:", error);
+    setError("Failed to load applications. Please try again.");
+    setApplications([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const filterApplications = () => {
     let filtered = applications;
@@ -98,50 +105,51 @@ const OrganizationApplicants = () => {
   };
 
   const updateApplicationStatus = async (applicationId, status, notes = "") => {
-    try {
-      console.log(`Updating application ${applicationId} to ${status}`);
+  try {
+    const res = await API.patch(
+      `/applications/${applicationId}/status`,
+      { status, notes }
+    );
 
-      const response = await axios.patch(
-        `http://localhost:3000/applications/${applicationId}/status`,
-        {
-          status,
-          notes,
-        }
-      );
-
-      if (response.data.success) {
-        fetchApplications();
-        alert(`Application ${status} successfully!`);
-      } else {
-        alert(`Failed to ${status} application: ${response.data.message}`);
-      }
-    } catch (error) {
-      console.error("Error updating application status:", error);
-      alert(`Failed to ${status} application: ${error.response?.data?.message || error.message}`);
+    if (res.success) {
+      fetchApplications();
+    } else {
+      throw new Error(res.message || "Failed to update status");
     }
-  };
+  } catch (error) {
+    console.error("Error updating application status:", error);
+    alert(
+      error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update application"
+    );
+  }
+};
 
   const deleteApplication = async (applicationId) => {
-    if (!window.confirm("Are you sure you want to delete this application?")) {
-      return;
-    }
+  if (!window.confirm("Are you sure you want to delete this application?")) {
+    return;
+  }
 
-    try {
-      const response = await axios.delete(
-        `http://localhost:3000/applications/${applicationId}`
+  try {
+    const res = await API.delete(`/applications/${applicationId}`);
+
+    if (res.success) {
+      setApplications((prev) =>
+        prev.filter((app) => app._id !== applicationId)
       );
-
-      if (response.data.success) {
-        fetchApplications();
-        alert("Application deleted successfully!");
-      } else {
-        alert("Failed to delete application: " + response.data.message);
-      }
-    } catch (error) {
-      console.error("Error deleting application:", error);
-      alert("Failed to delete application: " + (error.response?.data?.message || error.message));
+    } else {
+      throw new Error(res.message || "Failed to delete");
     }
-  };
+  } catch (error) {
+    console.error("Error deleting application:", error);
+    alert(
+      error?.response?.data?.message ||
+        error?.message ||
+        "Failed to delete application"
+    );
+  }
+};
 
   const getStatusColor = (status) => {
     switch (status) {

@@ -14,8 +14,8 @@ import {
   ArrowRight,
   Star,
 } from "lucide-react";
-import axios from "axios";
 import { Link } from "react-router";
+import API from '../../utils/api';
 
 const Events = () => {
   const [events, setEvents] = useState([]);
@@ -32,17 +32,21 @@ const Events = () => {
   }, []);
 
   const fetchEvents = async () => {
-    try {
-      const response = await axios.get("http://localhost:3000/events");
-      if (response.data.success) {
-        setEvents(response.data.events);
-      }
-    } catch (error) {
-      console.error("Error fetching events:", error);
-    } finally {
-      setLoading(false);
+  try {
+    const response = await API.get("/events");
+
+    if (response.success) {
+      setEvents(Array.isArray(response.data) ? response.data : []);
+    } else {
+      setEvents([]);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching events:", error);
+    setEvents([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Get unique values for filters
   const categories = ["all", ...new Set(events.map((event) => event.category))];

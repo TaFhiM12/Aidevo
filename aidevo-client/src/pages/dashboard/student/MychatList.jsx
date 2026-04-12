@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Search, 
-  MessageCircle, 
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Search,
+  MessageCircle,
   Send,
   Plus,
   GraduationCap,
@@ -12,118 +12,178 @@ import {
   User,
   Users,
   Mail,
-  Calendar
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import socketService from '../../../utils/Socket';
-import axios from 'axios';
-import useAuth from '../../../hooks/useAuth';
+  Calendar,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import socketService from "../../../utils/Socket";
+import useAuth from "../../../hooks/useAuth";
+import API from "../../../utils/api";
+import { getOtherParticipant } from '../../../utils/chatParticipant';
 
 const MychatList = () => {
   const { user } = useAuth();
+
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const [organizations, setOrganizations] = useState([]);
   const [myOrganizations, setMyOrganizations] = useState([]);
   const [showNewChat, setShowNewChat] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileView, setMobileView] = useState('sidebar');
-  const [activeTab, setActiveTab] = useState('chats');
+  const [mobileView, setMobileView] = useState("sidebar");
+  const [activeTab, setActiveTab] = useState("chats");
   const [socketConnected, setSocketConnected] = useState(false);
+  const [currentUserObjectId, setCurrentUserObjectId] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
   const messagesEndRef = useRef(null);
 
-  // Use useCallback for stable function references
-  const handleNewMessage = useCallback((message) => {
-    if (selectedConversation && message.conversationId === selectedConversation._id) {
-      setMessages(prev => [...prev, message]);
-      
-      setConversations(prev => 
-        prev.map(conv => 
-          conv._id === message.conversationId 
-            ? { 
-                ...conv, 
-                lastMessage: message.text,
-                lastMessageTime: message.timestamp,
-                unreadCount: conv._id === selectedConversation._id ? 0 : conv.unreadCount + 1
-              }
-            : conv
-        )
-      );
-    } else {
-      setConversations(prev => 
-        prev.map(conv => 
-          conv._id === message.conversationId 
-            ? { ...conv, unreadCount: (conv.unreadCount || 0) + 1 }
-            : conv
-        )
-      );
-    }
-  }, [selectedConversation]);
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+      if (!mobile && mobileView === 'sidebar') {
+        setMobileView('sidebar');
+      }
+    };
 
-  const handleMessagesRead = useCallback((data) => {
-    // Handle when messages are marked as read
-  }, []);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [mobileView]);
+
+  const fetchCurrentUserObjectId = async () => {
+    try {
+      const response = await API.get(`/users/uid/${user.uid}`);
+      const appUser = response.data;
+      const objectId = appUser?._id || null;
+      setCurrentUserObjectId(objectId);
+      return objectId;
+    } catch (error) {
+      console.error("Error fetching current user object id:", error);
+      setCurrentUserObjectId(null);
+      return null;
+    }
+  };
+
+  const handleNewMessage = useCallback(
+    (message) => {
+      const normalizedConversationId =
+        typeof message.conversationId === "object" &&
+        message.conversationId !== null &&
+        "$oid" in message.conversationId
+          ? message.conversationId.$oid
+          : String(message.conversationId);
+
+      const selectedConversationId = selectedConversation?._id
+        ? String(selectedConversation._id)
+        : null;
+
+      if (
+        selectedConversationId &&
+        normalizedConversationId === selectedConversationId
+      ) {
+        setMessages((prev) => [...prev, message]);
+
+        setConversations((prev) =>
+          prev.map((conv) =>
+            String(conv._id) === normalizedConversationId
+              ? {
+                  ...conv,
+                  lastMessage: message.text,
+                  lastMessageTime: message.timestamp,
+                  unreadCount:
+                    String(conv._id) === selectedConversationId
+                      ? 0
+                      : (conv.unreadCount || 0) + 1,
+                }
+              : conv
+          )
+        );
+      } else {
+        setConversations((prev) =>
+          prev.map((conv) =>
+            String(conv._id) === normalizedConversationId
+              ? {
+                  ...conv,
+                  lastMessage: message.text,
+                  lastMessageTime: message.timestamp,
+                  unreadCount: (conv.unreadCount || 0) + 1,
+                }
+              : conv
+          )
+        );
+      }
+    },
+    [selectedConversation]
+  );
+
+  const handleMessagesRead = useCallback(() => {}, []);
 
   useEffect(() => {
-    // Connect to socket
     const socket = socketService.connect();
-    
-    // Set up connection status listeners
-    socket.on('connect', () => {
-      console.log('✅ Socket connected');
+
+    socket.on("connect", () => {
+      console.log("✅ Socket connected");
       setSocketConnected(true);
-      
-      // Re-join conversation if one was selected before refresh
-      if (selectedConversation) {
-        socket.emit('join_conversation', selectedConversation._id);
+
+      if (selectedConversation?._id) {
+        socket.emit("join_conversation", selectedConversation._id);
       }
     });
 
-    socket.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
+    socket.on("disconnect", () => {
+      console.log("❌ Socket disconnected");
       setSocketConnected(false);
     });
 
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
       setSocketConnected(false);
     });
 
-    // Your existing socket listeners
-    socket.on('receive_message', handleNewMessage);
-    socket.on('messages_read', handleMessagesRead);
+    socket.on("receive_message", handleNewMessage);
+    socket.on("messages_read", handleMessagesRead);
 
     return () => {
-      // Clean up all listeners
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('connect_error');
-      socket.off('receive_message', handleNewMessage);
-      socket.off('messages_read', handleMessagesRead);
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("connect_error");
+      socket.off("receive_message", handleNewMessage);
+      socket.off("messages_read", handleMessagesRead);
     };
-  }, [handleNewMessage, handleMessagesRead, selectedConversation]); // Add dependencies
+  }, [handleNewMessage, handleMessagesRead, selectedConversation]);
 
   useEffect(() => {
-    if (user) {
-      fetchConversations();
-      fetchOrganizations();
-      fetchMyOrganizations();
-    }
+    const init = async () => {
+      if (!user?.uid) return;
+
+      const objectId = await fetchCurrentUserObjectId();
+      if (!objectId) return;
+
+      await Promise.all([
+        fetchConversations(),
+        fetchOrganizations(),
+        fetchMyOrganizations(objectId),
+      ]);
+    };
+
+    init();
   }, [user]);
 
   useEffect(() => {
-    if (selectedConversation) {
+    if (selectedConversation?._id) {
       fetchMessages(selectedConversation._id);
       joinConversation(selectedConversation._id);
-      if (window.innerWidth < 1024) {
-        setMobileView('chat');
+
+      if (isMobile) {
+        setMobileView("chat");
       }
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, currentUserObjectId, isMobile]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -135,81 +195,86 @@ const MychatList = () => {
 
   const fetchConversations = async () => {
     try {
-      const response = await axios.get(`http://localhost:3000/conversations/${user.uid}`);
-      setConversations(response.data.conversations);
+      const response = await API.get(`/conversations/user/${user.uid}`);
+      setConversations(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching conversations:', error);
+      console.error("Error fetching conversations:", error);
+      setConversations([]);
     }
   };
 
   const fetchOrganizations = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/organizations');
-      setOrganizations(response.data.organizations);
+      const response = await API.get("/organizations");
+      setOrganizations(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching organizations:', error);
+      console.error("Error fetching organizations:", error);
+      setOrganizations([]);
     }
   };
 
-  const fetchMyOrganizations = async () => {
+  const fetchMyOrganizations = async (studentId) => {
     try {
-      const studentResponse = await axios.get(`http://localhost:3000/users/uid/${user.uid}`);
-      const studentId = studentResponse.data.user._id;
-      
-      const response = await axios.get(`http://localhost:3000/students/${studentId}/organizations`);
-      setMyOrganizations(response.data.organizations);
+      if (!studentId) return;
+      const response = await API.get(`/students/${studentId}/organizations`);
+      setMyOrganizations(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching my organizations:', error);
+      console.error("Error fetching my organizations:", error);
       setMyOrganizations([]);
     }
   };
 
   const fetchMessages = async (conversationId) => {
     try {
-      const response = await axios.get(`http://localhost:3000/conversations/${conversationId}/messages`);
-      setMessages(response.data.messages);
-      
+      const response = await API.get(`/conversations/${conversationId}/messages`);
+      setMessages(Array.isArray(response.data) ? response.data : []);
+
       const socket = socketService.getSocket();
-      if (socket && conversationId) {
-        socket.emit('mark_as_read', {
+      if (socket && conversationId && currentUserObjectId) {
+        socket.emit("mark_as_read", {
           conversationId,
-          userId: user.uid
+          userId: currentUserObjectId,
         });
       }
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error("Error fetching messages:", error);
+      setMessages([]);
     }
   };
 
   const joinConversation = (conversationId) => {
     const socket = socketService.getSocket();
     if (socket) {
-      socket.emit('join_conversation', conversationId);
+      socket.emit("join_conversation", conversationId);
     }
   };
 
   const startNewChat = async (organization) => {
     try {
       setLoading(true);
-      
-      const studentResponse = await axios.get(`http://localhost:3000/users/uid/${user.uid}`);
-      const studentId = studentResponse.data.user._id;
 
-      const response = await axios.post('http://localhost:3000/conversations', {
-        studentId: studentId,
-        organizationId: organization._id
+      if (!currentUserObjectId) {
+        throw new Error("Current user ID not found");
+      }
+
+      const response = await API.post("/conversations", {
+        participantAId: currentUserObjectId,
+        participantBId: organization._id,
       });
 
-      setSelectedConversation(response.data.conversation);
+      const conversation = response.data;
+
+      setSelectedConversation(conversation);
       setShowNewChat(false);
-      setSearchTerm('');
-      setActiveTab('chats');
-      
-      if (!conversations.find(conv => conv._id === response.data.conversation._id)) {
-        setConversations(prev => [response.data.conversation, ...prev]);
-      }
+      setSearchTerm("");
+      setActiveTab("chats");
+
+      setConversations((prev) => {
+        const exists = prev.find((conv) => String(conv._id) === String(conversation._id));
+        return exists ? prev : [conversation, ...prev];
+      });
     } catch (error) {
-      console.error('Error starting new chat:', error);
+      console.error("Error starting new chat:", error);
     } finally {
       setLoading(false);
     }
@@ -218,59 +283,75 @@ const MychatList = () => {
   const sendMessage = async (e) => {
     e.preventDefault();
     const socket = socketService.getSocket();
-    if (!newMessage.trim() || !selectedConversation || !socket) return;
 
-    const studentResponse = await axios.get(`http://localhost:3000/users/uid/${user.uid}`);
-    const studentId = studentResponse.data.user._id;
+    if (
+      !newMessage.trim() ||
+      !selectedConversation ||
+      !socket ||
+      !currentUserObjectId
+    ) {
+      return;
+    }
 
     const messageData = {
       conversationId: selectedConversation._id,
-      senderId: studentId,
+      senderId: currentUserObjectId,
       senderName: user.displayName || user.name,
-      senderRole: 'student',
+      senderRole: "student",
       senderPhoto: user.photoURL,
-      text: newMessage.trim()
+      text: newMessage.trim(),
     };
 
-    socket.emit('send_message', messageData);
-    setNewMessage('');
+    socket.emit("send_message", messageData);
+    setNewMessage("");
   };
 
-
   const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!timestamp) return "";
+    return new Date(timestamp).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const formatJoinDate = (timestamp) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric'
+    if (!timestamp) return "";
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
     });
   };
 
-  const filteredOrganizations = organizations.filter(org =>
-    org.organization?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.organization?.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredOrganizations = organizations.filter(
+    (org) =>
+      org.organization?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.organization?.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredConversations = conversations.filter(conv =>
-    conv.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conv.organizationInfo?.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conv.organizationInfo?.campus?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredConversations = conversations.filter((conv) => {
+    const other = getOtherParticipant(conv, currentUserObjectId);
+    if (!other) return false;
+
+    return (
+      other.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      other.meta?.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      other.meta?.campus?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      other.meta?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+
+  const filteredMyOrganizations = myOrganizations.filter(
+    (org) =>
+      org.organizationName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.organizationEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.organizationInfo?.type?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredMyOrganizations = myOrganizations.filter(org =>
-    org.organizationName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.organizationEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.organizationInfo?.type?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const isMobile = window.innerWidth < 1024;
+  const selectedOtherParticipant = selectedConversation
+    ? getOtherParticipant(selectedConversation, currentUserObjectId)
+    : null;
 
   return (
     <div className="h-full bg-gray-50">
@@ -396,66 +477,71 @@ const MychatList = () => {
                 {activeTab === 'chats' && (
                   <div>
                     <AnimatePresence>
-                      {filteredConversations.map((conversation, index) => (
-                        <motion.div
-                          key={conversation._id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          onClick={() => {
-                            setSelectedConversation(conversation);
-                            if (isMobile) setMobileView('chat');
-                          }}
-                          className={`p-3 border-b border-gray-100 cursor-pointer transition-all duration-200 group ${
-                            selectedConversation?._id === conversation._id
-                              ? 'bg-blue-50 border-blue-200'
-                              : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="relative flex-shrink-0">
-                              <img
-                                src={conversation.organizationPhoto || `https://ui-avatars.com/api/?name=${conversation.organizationName}&background=4bbeff&color=fff`}
-                                alt={conversation.organizationName}
-                                className="w-12 h-12 rounded-xl object-cover"
-                              />
-                              {conversation.unreadCount > 0 && (
-                                <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                  {conversation.unreadCount}
-                                </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-gray-900 text-sm truncate">
-                                  {conversation.organizationName}
-                                </h3>
-                                <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                                  {formatTime(conversation.lastMessageTime)}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-600 truncate mt-1">
-                                {conversation.lastMessage || 'No messages yet'}
-                              </p>
-                              <div className="flex items-center gap-1 mt-1">
-                                <Building2 className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                                <span className="text-xs text-gray-500 truncate">
-                                  {conversation.organizationInfo?.type}
-                                </span>
-                                {conversation.organizationInfo?.campus && (
-                                  <>
-                                    <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                                    <span className="text-xs text-gray-500 truncate">
-                                      {conversation.organizationInfo.campus}
-                                    </span>
-                                  </>
+                      {filteredConversations.map((conversation, index) => {
+                        const other = getOtherParticipant(conversation, currentUserObjectId);
+                        if (!other) return null;
+
+                        return (
+                          <motion.div
+                            key={conversation._id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            onClick={() => {
+                              setSelectedConversation(conversation);
+                              if (isMobile) setMobileView('chat');
+                            }}
+                            className={`p-3 border-b border-gray-100 cursor-pointer transition-all duration-200 group ${
+                              selectedConversation?._id === conversation._id
+                                ? 'bg-blue-50 border-blue-200'
+                                : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="relative flex-shrink-0">
+                                <img
+                                  src={other.photo || `https://ui-avatars.com/api/?name=${other.name}&background=4bbeff&color=fff`}
+                                  alt={other.name}
+                                  className="w-12 h-12 rounded-xl object-cover"
+                                />
+                                {conversation.unreadCount > 0 && (
+                                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                    {conversation.unreadCount}
+                                  </div>
                                 )}
                               </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-semibold text-gray-900 text-sm truncate">
+                                    {other.name}
+                                  </h3>
+                                  <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                                    {conversation.lastMessageTime ? formatTime(conversation.lastMessageTime) : ""}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-600 truncate mt-1">
+                                  {conversation.lastMessage || 'No messages yet'}
+                                </p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <Building2 className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                  <span className="text-xs text-gray-500 truncate">
+                                    {other.meta?.type || other.role}
+                                  </span>
+                                  {other.meta?.campus && (
+                                    <>
+                                      <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                      <span className="text-xs text-gray-500 truncate">
+                                        {other.meta.campus}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        );
+                      })}
                     </AnimatePresence>
 
                     {filteredConversations.length === 0 && (
@@ -485,91 +571,95 @@ const MychatList = () => {
                     </div>
 
                     <AnimatePresence>
-                      {filteredMyOrganizations.map((org, index) => (
-                        <motion.div
-                          key={org._id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 group"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <img
-                              src={org.organizationPhoto || `https://ui-avatars.com/api/?name=${org.organizationName}&background=4bbeff&color=fff`}
-                              alt={org.organizationName}
-                              className="w-12 h-12 rounded-xl object-cover"
-                            />
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-gray-900 text-sm truncate">
-                                  {org.organizationName}
-                                </h3>
-                                <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                                  Member
+                      {filteredMyOrganizations.map((org, index) => {
+                        // Fix: Match by userId instead of name for reliability
+                        const existingConv = conversations.find((conv) => {
+                          const other = getOtherParticipant(conv, currentUserObjectId);
+                          return String(other?.userId) === String(org.organizationId);
+                        });
+
+                        return (
+                          <motion.div
+                            key={org._id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 group"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <img
+                                src={org.organizationPhoto || `https://ui-avatars.com/api/?name=${org.organizationName}&background=4bbeff&color=fff`}
+                                alt={org.organizationName}
+                                className="w-12 h-12 rounded-xl object-cover"
+                              />
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-semibold text-gray-900 text-sm truncate">
+                                    {org.organizationName}
+                                  </h3>
+                                  <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                    Member
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Mail className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500 truncate">
+                                    {org.organizationEmail}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Building2 className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500">
+                                    {org.organizationInfo?.type}
+                                  </span>
+                                  {org.organizationInfo?.campus && (
+                                    <>
+                                      <MapPin className="w-3 h-3 text-gray-400" />
+                                      <span className="text-xs text-gray-500">
+                                        {org.organizationInfo.campus}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Calendar className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500">
+                                    Joined {formatJoinDate(org.joinedAt)}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-2">
+                                  <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => {
+                                      if (existingConv) {
+                                        setSelectedConversation(existingConv);
+                                        if (isMobile) setMobileView('chat');
+                                      } else {
+                                        startNewChat({ 
+                                          _id: org.organizationId,
+                                          name: org.organizationName,
+                                          email: org.organizationEmail,
+                                          photoURL: org.organizationPhoto,
+                                          organization: org.organizationInfo
+                                        });
+                                      }
+                                    }}
+                                    className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                                  >
+                                    Message
+                                  </motion.button>
                                 </div>
                               </div>
-                              
-                              <div className="flex items-center gap-2 mt-1">
-                                <Mail className="w-3 h-3 text-gray-400" />
-                                <span className="text-xs text-gray-500 truncate">
-                                  {org.organizationEmail}
-                                </span>
-                              </div>
-                              
-                              <div className="flex items-center gap-2 mt-1">
-                                <Building2 className="w-3 h-3 text-gray-400" />
-                                <span className="text-xs text-gray-500">
-                                  {org.organizationInfo?.type}
-                                </span>
-                                {org.organizationInfo?.campus && (
-                                  <>
-                                    <MapPin className="w-3 h-3 text-gray-400" />
-                                    <span className="text-xs text-gray-500">
-                                      {org.organizationInfo.campus}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2 mt-1">
-                                <Calendar className="w-3 h-3 text-gray-400" />
-                                <span className="text-xs text-gray-500">
-                                  Joined {formatJoinDate(org.joinedAt)}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-2 mt-2">
-                                <motion.button
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => {
-                                    // Find or create conversation with this organization
-                                    const existingConv = conversations.find(
-                                      conv => conv.organizationName === org.organizationName
-                                    );
-                                    if (existingConv) {
-                                      setSelectedConversation(existingConv);
-                                      if (isMobile) setMobileView('chat');
-                                    } else {
-                                      startNewChat({ 
-                                        _id: org.organizationId,
-                                        name: org.organizationName,
-                                        email: org.organizationEmail,
-                                        photoURL: org.organizationPhoto,
-                                        organization: org.organizationInfo
-                                      });
-                                    }
-                                  }}
-                                  className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors duration-200"
-                                >
-                                  Message
-                                </motion.button>
-                              </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        );
+                      })}
                     </AnimatePresence>
 
                     {filteredMyOrganizations.length === 0 && (
@@ -634,23 +724,23 @@ const MychatList = () => {
                       </button>
                     )}
                     <img
-                      src={selectedConversation.organizationPhoto || `https://ui-avatars.com/api/?name=${selectedConversation.organizationName}&background=4bbeff&color=fff`}
-                      alt={selectedConversation.organizationName}
+                      src={selectedOtherParticipant?.photo || `https://ui-avatars.com/api/?name=${selectedOtherParticipant?.name || "User"}&background=4bbeff&color=fff`}
+                      alt={selectedOtherParticipant?.name || "User"}
                       className="w-10 h-10 rounded-xl object-cover"
                     />
                     <div>
                       <h3 className="font-semibold text-gray-900 text-sm">
-                        {selectedConversation.organizationName}
+                        {selectedOtherParticipant?.name || "Unknown User"}
                       </h3>
                       <div className="flex items-center gap-3 text-xs text-gray-600">
                         <div className="flex items-center gap-1">
                           <Building2 className="w-3 h-3" />
-                          <span>{selectedConversation.organizationInfo?.type}</span>
+                          <span>{selectedOtherParticipant?.meta?.type || selectedOtherParticipant?.role}</span>
                         </div>
-                        {selectedConversation.organizationInfo?.campus && (
+                        {selectedOtherParticipant?.meta?.campus && (
                           <div className="flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
-                            <span>{selectedConversation.organizationInfo.campus}</span>
+                            <span>{selectedOtherParticipant.meta.campus}</span>
                           </div>
                         )}
                       </div>
@@ -673,29 +763,33 @@ const MychatList = () => {
               {/* Messages Area - Scrollable */}
               <div className="flex-1 overflow-y-auto bg-gray-50/50 p-4">
                 <div className="space-y-3 max-w-4xl mx-auto">
-                  {messages.map((message, index) => (
-                    <motion.div
-                      key={message._id || index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${message.senderRole === 'student' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md rounded-2xl p-3 ${
-                          message.senderRole === 'student'
-                            ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-br-none'
-                            : 'bg-white text-gray-900 rounded-bl-none shadow-sm border border-gray-200'
-                        }`}
+                  {messages.map((message, index) => {
+                    const isOwnMessage = String(message.senderId) === String(currentUserObjectId);
+                    
+                    return (
+                      <motion.div
+                        key={message._id || index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                       >
-                        <p className="text-sm leading-relaxed">{message.text}</p>
-                        <div className={`flex items-center justify-end space-x-1 mt-2 text-xs ${
-                          message.senderRole === 'student' ? 'text-blue-100' : 'text-gray-500'
-                        }`}>
-                          <span>{formatTime(message.timestamp)}</span>
+                        <div
+                          className={`max-w-xs lg:max-w-md rounded-2xl p-3 ${
+                            isOwnMessage
+                              ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-br-none'
+                              : 'bg-white text-gray-900 rounded-bl-none shadow-sm border border-gray-200'
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed">{message.text}</p>
+                          <div className={`flex items-center justify-end space-x-1 mt-2 text-xs ${
+                            isOwnMessage ? 'text-blue-100' : 'text-gray-500'
+                          }`}>
+                            <span>{formatTime(message.timestamp)}</span>
+                          </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
 
@@ -704,7 +798,7 @@ const MychatList = () => {
                     <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">No messages yet</p>
                     <p className="text-sm text-gray-400 mt-2">
-                      Start a conversation with {selectedConversation.organizationName}
+                      Start a conversation with {selectedOtherParticipant?.name || "this user"}
                     </p>
                   </div>
                 )}

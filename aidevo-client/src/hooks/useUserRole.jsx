@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import useAuth from './useAuth';
-import axios from 'axios';
-import { useUserContext } from '../context/UserContext';
+import { useState, useEffect } from "react";
+import useAuth from "./useAuth";
+import { useUserContext } from "../context/UserContext";
+import API from "../utils/api";
 
 const useUserRole = () => {
   const { user } = useAuth();
@@ -15,41 +15,43 @@ const useUserRole = () => {
         setLoading(false);
         return;
       }
-      
-      // Only fetch if we don't have the data or it's a different user
+
       if (globalUserInfo && globalUserInfo.email === user.email) {
         setLoading(false);
         return;
       }
-      
+
       setLoading(true);
       setError(null);
-      
+
       try {
-        const res = await axios.get(`http://localhost:3000/users/role/${user.email}`);
-        const userData = res.data;
-        updateGlobalUserInfo(userData);
+        const res = await API.get(
+          `/users/role/${encodeURIComponent(user.email)}`
+        );
+
+        updateGlobalUserInfo(res.data);
       } catch (err) {
+        console.error("Error fetching user role:", err);
         setError(err);
-        console.error('Error fetching user role:', err);
+        updateGlobalUserInfo(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserRole();
-  }, [user?.email, userUpdateKey]); // Remove globalUserInfo from dependencies
+  }, [user?.email, userUpdateKey]);
 
   const refetch = () => {
     setLoading(true);
-
+    updateGlobalUserInfo(null);
   };
 
-  return { 
-    userInfo: globalUserInfo, 
-    loading, 
-    error, 
-    refetch 
+  return {
+    userInfo: globalUserInfo,
+    loading,
+    error,
+    refetch,
   };
 };
 

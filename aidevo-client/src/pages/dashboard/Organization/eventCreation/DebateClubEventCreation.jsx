@@ -1,80 +1,66 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import axios from "axios";
 import Swal from "sweetalert2";
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Upload, 
-  Users, 
-  PlusCircle, 
-  DollarSign,
-  Tag,
-  Eye,
-  Mail,
-  Phone,
+import {
+  Calendar,
+  Clock,
+  MapPin,
   Building,
-  Users2,
-  Target,
-  FileText,
-  Sparkles,
   Mic,
   Trophy,
   Scale,
-  Gavel
+  Gavel,
 } from "lucide-react";
 import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary";
 import useAuth from "../../../../hooks/useAuth";
+import useUserRole from "../../../../hooks/useUserRole";
+import API from "../../../../utils/api";
 
 const DebateClubEventCreation = () => {
-  const {user} = useAuth();
-  const [formData, setFormData] = useState({
-    // Basic Information
-    title: "",
-    shortDesc: "",
-    longDesc: "",
-    organizationEmail: user?.email || "",
-    organization: "Just Debate Club",
-    
-    // Event Type & Category
-    type: "on-campus",
-    category: "competition",
-    location: "",
-    
-    // Date & Time
-    startAt: "",
-    endAt: "",
-    registrationDeadline: "",
-    
-    // Registration Details
-    registrationRequired: true,
-    maxCapacity: "",
-    fee: "0",
-    
-    // Contact & Organization
-    contactName: "",
-    contactEmail: "",
-    contactPhone: "",
-    
-    // Additional Details
-    tags: "debate, public-speaking, competition, critical-thinking",
-    visibility: "public",
-    cover: null,
-    requirements: "",
-    targetAudience: "all-students",
+  const { user } = useAuth();
+  const { userInfo } = useUserRole();
 
-    // Debate Club Specific Fields
-    debateFormat: "British Parliamentary",
-    teamSize: "2",
-    motionTopics: "",
-    judgingCriteria: "",
-    preparationTime: 30,
-    speechDuration: 7,
-    adjudicatorsCount: "",
-    prizeDetails: "",
-    skillLevel: "beginner"
-  });
+  const orgName = userInfo?.organization?.name || "Debate Club";
+  const orgEmail = userInfo?.email || user?.email || "";
+  const [formData, setFormData] = useState({
+  title: "",
+  shortDesc: "",
+  longDesc: "",
+  organizationEmail: orgEmail,
+  organization: orgName,
+
+  type: "on-campus",
+  category: "competition",
+  location: "",
+
+  startAt: "",
+  endAt: "",
+  registrationDeadline: "",
+
+  registrationRequired: true,
+  maxCapacity: "",
+  fee: "0",
+
+  contactName: "",
+  contactEmail: orgEmail,
+  contactPhone: "",
+
+  tags: "debate, public-speaking, competition, critical-thinking",
+  visibility: "public",
+  cover: null,
+  requirements: "",
+  targetAudience: "all-students",
+
+  debateFormat: "British Parliamentary",
+  teamSize: "2",
+  motionTopics: "",
+  judgingCriteria: "",
+  preparationTime: 30,
+  speechDuration: 7,
+  adjudicatorsCount: "",
+  prizeDetails: "",
+  skillLevel: "beginner",
+});
 
   const debateFormats = [
     "British Parliamentary",
@@ -111,117 +97,121 @@ const DebateClubEventCreation = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      // Debate specific validations
-      if (!formData.motionTopics) {
-        Swal.fire({
-          title: "Motion Topics Required",
-          text: "Please specify the debate motion topics",
-          icon: "warning",
-          confirmButtonColor: "#2563eb",
-        });
-        return;
-      }
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-      if (!formData.adjudicatorsCount) {
-        Swal.fire({
-          title: "Adjudicators Required",
-          text: "Please specify the number of adjudicators",
-          icon: "warning",
-          confirmButtonColor: "#2563eb",
-        });
-        return;
-      }
-
-      let imageUrl = "";
-
-      if (formData.cover) {
-        imageUrl = await uploadToCloudinary(formData.cover);
-      }
-
-      const eventData = {
-        ...formData,
-        cover: imageUrl,
-        organizationType: "debate-club",
-        specialRequirements: {
-          debateFormat: formData.debateFormat,
-          teamSize: formData.teamSize,
-          motionTopics: formData.motionTopics,
-          judgingCriteria: formData.judgingCriteria,
-          preparationTime: formData.preparationTime,
-          speechDuration: formData.speechDuration,
-          adjudicatorsCount: formData.adjudicatorsCount,
-          prizeDetails: formData.prizeDetails,
-          skillLevel: formData.skillLevel
-        }
-      };
-
-      const res = await axios.post("http://localhost:3000/events", eventData);
-
-      if (res.data.success) {
-        Swal.fire({
-          title: "🎉 Debate Event Created!",
-          text: "Your debate competition has been scheduled successfully.",
-          icon: "success",
-          confirmButtonColor: "#2563eb",
-        });
-        
-        // Reset form
-        setFormData({
-          title: "",
-          shortDesc: "",
-          longDesc: "",
-          organization: "Debating Club",
-          type: "on-campus",
-          category: "competition",
-          location: "",
-          startAt: "",
-          endAt: "",
-          registrationDeadline: "",
-          registrationRequired: true,
-          maxCapacity: "",
-          fee: "0",
-          contactName: "",
-          contactEmail: "",
-          contactPhone: "",
-          tags: "debate, public-speaking, competition, critical-thinking",
-          visibility: "public",
-          cover: null,
-          requirements: "",
-          targetAudience: "all-students",
-          debateFormat: "British Parliamentary",
-          teamSize: "2",
-          motionTopics: "",
-          judgingCriteria: "",
-          preparationTime: 30,
-          speechDuration: 7,
-          adjudicatorsCount: "",
-          prizeDetails: "",
-          skillLevel: "beginner"
-        });
-      }
-    } catch (err) {
-      console.error(err);
+  try {
+    if (!formData.motionTopics) {
       Swal.fire({
-        title: "❌ Error Creating Debate Event",
-        text: err.response?.data?.message || "Failed to create debate event",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        title: "Motion Topics Required",
+        text: "Please specify the debate motion topics",
+        icon: "warning",
+        confirmButtonColor: "#2563eb",
       });
+      return;
     }
-  };
+
+    if (!formData.adjudicatorsCount) {
+      Swal.fire({
+        title: "Adjudicators Required",
+        text: "Please specify the number of adjudicators",
+        icon: "warning",
+        confirmButtonColor: "#2563eb",
+      });
+      return;
+    }
+
+    let imageUrl = "";
+
+    if (formData.cover) {
+      imageUrl = await uploadToCloudinary(formData.cover);
+    }
+
+    const eventData = {
+      ...formData,
+      organizationEmail: orgEmail,
+      organization: orgName,
+      cover: imageUrl,
+      organizationType: "debate-club",
+      specialRequirements: {
+        debateFormat: formData.debateFormat,
+        teamSize: formData.teamSize,
+        motionTopics: formData.motionTopics,
+        judgingCriteria: formData.judgingCriteria,
+        preparationTime: formData.preparationTime,
+        speechDuration: formData.speechDuration,
+        adjudicatorsCount: formData.adjudicatorsCount,
+        prizeDetails: formData.prizeDetails,
+        skillLevel: formData.skillLevel,
+      },
+    };
+
+    const res = await API.post("/events", eventData);
+
+    if (res.success) {
+      Swal.fire({
+        title: "🎉 Debate Event Created!",
+        text: "Your debate competition has been scheduled successfully.",
+        icon: "success",
+        confirmButtonColor: "#2563eb",
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        title: "",
+        shortDesc: "",
+        longDesc: "",
+        organizationEmail: orgEmail,
+        organization: orgName,
+        type: "on-campus",
+        category: "competition",
+        location: "",
+        startAt: "",
+        endAt: "",
+        registrationDeadline: "",
+        registrationRequired: true,
+        maxCapacity: "",
+        fee: "0",
+        contactName: "",
+        contactEmail: orgEmail,
+        contactPhone: "",
+        tags: "debate, public-speaking, competition, critical-thinking",
+        visibility: "public",
+        cover: null,
+        requirements: "",
+        targetAudience: "all-students",
+        debateFormat: "British Parliamentary",
+        teamSize: "2",
+        motionTopics: "",
+        judgingCriteria: "",
+        preparationTime: 30,
+        speechDuration: 7,
+        adjudicatorsCount: "",
+        prizeDetails: "",
+        skillLevel: "beginner",
+      }));
+    } else {
+      throw new Error(res.message || "Failed to create debate event");
+    }
+  } catch (err) {
+    console.error(err);
+    Swal.fire({
+      title: "❌ Error Creating Debate Event",
+      text: err?.response?.data?.message || err?.message || "Failed to create debate event",
+      icon: "error",
+      confirmButtonColor: "#ef4444",
+    });
+  }
+};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-indigo-50 pb-10 px-4">
+    <div className="min-h-screen  pb-10 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8 pt-6"
+          className="text-center mb-8 "
         >
           <div className="bg-white rounded-2xl shadow-2xl p-8 mb-6 border-l-8 border-sky-500">
             <div className="flex items-center justify-center gap-6 mb-4">

@@ -1,71 +1,66 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import axios from "axios";
 import Swal from "sweetalert2";
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Upload, 
-  Users, 
-  PlusCircle, 
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Upload,
+  Users,
   DollarSign,
-  Tag,
-  Eye,
   Mail,
   Phone,
   Building,
-  Users2,
   Target,
-  FileText,
-  Sparkles,
   Briefcase,
   Award,
   Network,
-  GraduationCap
+  GraduationCap,
+  Users2,
 } from "lucide-react";
 import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary";
 import useAuth from "../../../../hooks/useAuth";
+import useUserRole from "../../../../hooks/useUserRole";
+import API from "../../../../utils/api";
 
 const AssociationEventCreation = () => {
-  const {user} = useAuth();
+  const { user } = useAuth();
+  const { userInfo } = useUserRole();
 
-  const [formData, setFormData] = useState({
-    // Basic Information
+  const orgName =
+    userInfo?.organization?.name || "Association";
+  const orgEmail =
+    userInfo?.email || user?.email || "";
+
+    const [formData, setFormData] = useState({
     title: "",
     shortDesc: "",
     longDesc: "",
-    organizationEmail: user?.email || "",
-    organization: "",
-    
-    // Event Type & Category
+    organizationEmail: orgEmail,
+    organization: orgName,
+
     type: "on-campus",
     category: "professional",
     location: "",
-    
-    // Date & Time
+
     startAt: "",
     endAt: "",
     registrationDeadline: "",
-    
-    // Registration Details
+
     registrationRequired: true,
     maxCapacity: "",
     fee: "0",
-    
-    // Contact & Organization
+
     contactName: "",
-    contactEmail: "",
+    contactEmail: orgEmail,
     contactPhone: "",
-    
-    // Additional Details
+
     tags: "professional, networking, development",
     visibility: "public",
     cover: null,
     requirements: "",
     targetAudience: "all-students",
 
-    // Association Specific Fields
     eventType: "Networking Session",
     membershipRequired: "open",
     guestSpeakers: "",
@@ -74,7 +69,7 @@ const AssociationEventCreation = () => {
     creditHours: 0,
     industryFocus: "",
     networkingSession: true,
-    certificationProvided: false
+    certificationProvided: false,
   });
 
   const eventTypes = [
@@ -123,89 +118,94 @@ const AssociationEventCreation = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      let imageUrl = "";
+  e.preventDefault();
 
-      if (formData.cover) {
-        imageUrl = await uploadToCloudinary(formData.cover);
-      }
+  try {
+    let imageUrl = "";
 
-      const eventData = {
-        ...formData,
-        cover: imageUrl,
-        organizationType: "association",
-        specialRequirements: {
-          eventType: formData.eventType,
-          membershipRequired: formData.membershipRequired,
-          guestSpeakers: formData.guestSpeakers,
-          professionalLevel: formData.professionalLevel,
-          ceCredits: formData.ceCredits,
-          creditHours: formData.creditHours,
-          industryFocus: formData.industryFocus,
-          networkingSession: formData.networkingSession,
-          certificationProvided: formData.certificationProvided
-        }
-      };
-
-      const res = await axios.post("http://localhost:3000/events", eventData);
-
-      if (res.data.success) {
-        Swal.fire({
-          title: "🎉 Association Event Created!",
-          text: "Your professional event has been scheduled successfully.",
-          icon: "success",
-          confirmButtonColor: "#059669",
-        });
-        
-        // Reset form
-        setFormData({
-          title: "",
-          shortDesc: "",
-          longDesc: "",
-          organization: "",
-          type: "on-campus",
-          category: "professional",
-          location: "",
-          startAt: "",
-          endAt: "",
-          registrationDeadline: "",
-          registrationRequired: true,
-          maxCapacity: "",
-          fee: "0",
-          contactName: "",
-          contactEmail: "",
-          contactPhone: "",
-          tags: "professional, networking, development",
-          visibility: "public",
-          cover: null,
-          requirements: "",
-          targetAudience: "all-students",
-          eventType: "Networking Session",
-          membershipRequired: "open",
-          guestSpeakers: "",
-          professionalLevel: "All Levels",
-          ceCredits: false,
-          creditHours: 0,
-          industryFocus: "",
-          networkingSession: true,
-          certificationProvided: false
-        });
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        title: "❌ Error Creating Association Event",
-        text: err.response?.data?.message || "Failed to create association event",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
-      });
+    if (formData.cover) {
+      imageUrl = await uploadToCloudinary(formData.cover);
     }
-  };
+
+    const eventData = {
+      ...formData,
+      organizationEmail: orgEmail,
+      organization: orgName,
+      cover: imageUrl,
+      organizationType: "association",
+      specialRequirements: {
+        eventType: formData.eventType,
+        membershipRequired: formData.membershipRequired,
+        guestSpeakers: formData.guestSpeakers,
+        professionalLevel: formData.professionalLevel,
+        ceCredits: formData.ceCredits,
+        creditHours: formData.creditHours,
+        industryFocus: formData.industryFocus,
+        networkingSession: formData.networkingSession,
+        certificationProvided: formData.certificationProvided,
+      },
+    };
+
+    const res = await API.post("/events", eventData);
+
+    if (res.success) {
+      Swal.fire({
+        title: "🎉 Association Event Created!",
+        text: "Your professional event has been scheduled successfully.",
+        icon: "success",
+        confirmButtonColor: "#059669",
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        title: "",
+        shortDesc: "",
+        longDesc: "",
+        organizationEmail: orgEmail,
+        organization: orgName,
+        type: "on-campus",
+        category: "professional",
+        location: "",
+        startAt: "",
+        endAt: "",
+        registrationDeadline: "",
+        registrationRequired: true,
+        maxCapacity: "",
+        fee: "0",
+        contactName: "",
+        contactEmail: orgEmail,
+        contactPhone: "",
+        tags: "professional, networking, development",
+        visibility: "public",
+        cover: null,
+        requirements: "",
+        targetAudience: "all-students",
+        eventType: "Networking Session",
+        membershipRequired: "open",
+        guestSpeakers: "",
+        professionalLevel: "All Levels",
+        ceCredits: false,
+        creditHours: 0,
+        industryFocus: "",
+        networkingSession: true,
+        certificationProvided: false,
+      }));
+    } else {
+      throw new Error(res.message || "Failed to create association event");
+    }
+  } catch (err) {
+    console.error(err);
+    Swal.fire({
+      title: "❌ Error Creating Association Event",
+      text: err?.response?.data?.message || err?.message || "Failed to create association event",
+      icon: "error",
+      confirmButtonColor: "#ef4444",
+    });
+  }
+};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-cyan-50 pb-10 px-4">
+    <div className="min-h-screen  pb-10 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <motion.div

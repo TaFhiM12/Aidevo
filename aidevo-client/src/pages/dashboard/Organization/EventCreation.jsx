@@ -2,6 +2,7 @@ import axios from "axios";
 import Swal from "sweetalert2";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary";
 import CreateEventForm from '../../../components/forms/CreateEventForm';
+import API from "../../../utils/api";
 
 const EventCreation = () => {
   const handleCreateEvent = async (formData) => {
@@ -17,7 +18,8 @@ const EventCreation = () => {
         cover: imageUrl,
       };
 
-      const res = await axios.post("http://localhost:3000/events", eventData);
+      // const res = await axios.post("http://localhost:3000/events", eventData);
+      const res = await API.post("/events", eventData);
 
       if (res.data.success) {
         Swal.fire({

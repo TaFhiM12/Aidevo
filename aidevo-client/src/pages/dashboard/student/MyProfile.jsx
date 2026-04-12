@@ -43,6 +43,7 @@ import toast from "react-hot-toast";
 import { uploadToCloudinary } from "../../../utils/uploadToCloudinary";
 import useAuth from "../../../hooks/useAuth";
 import { useUserContext } from "../../../context/UserContext";
+import API from "../../../utils/api";
 
 // Enhanced Inline Edit Field Component for Student Profile
 const InlineEditField = ({
@@ -225,9 +226,7 @@ const ArrayManagement = ({
   };
 
   const handleEdit = (index, value) => {
-    const newItems = localItems.map((item, i) =>
-      i === index ? value : item
-    );
+    const newItems = localItems.map((item, i) => (i === index ? value : item));
     setLocalItems(newItems);
   };
 
@@ -250,8 +249,7 @@ const ArrayManagement = ({
       border: "border-blue-200",
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
-      button:
-        "from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600",
+      button: "from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600",
     },
     green: {
       bg: "bg-green-50",
@@ -464,15 +462,12 @@ const MyProfile = () => {
   const fetchStudentData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`http://localhost:3000/user-info/${user.email}`);
 
-      if (response.data.success) {
-        const studentData = response.data.user;
-        console.log("Fetched student data:", studentData);
-        setProfileData(studentData);
-      } else {
-        throw new Error(response.data.message || "Failed to fetch data");
-      }
+      const userResponse = await API.get(`/users/uid/${user.uid}`);
+      const studentData = userResponse.data;
+
+      console.log("Fetched student data:", studentData);
+      setProfileData(studentData);
     } catch (error) {
       console.error("Error fetching student data:", error);
       toast.error("Failed to load student profile");
@@ -486,27 +481,26 @@ const MyProfile = () => {
     try {
       setSavingField(field);
 
-      const response = await axios.patch(
-        `http://localhost:3000/students/${profileData._id}/field`,
-        { field, value }
-      );
+      const response = await API.patch(`/students/${profileData._id}/field`, {
+        field,
+        value,
+      });
 
-      if (response.data.success) {
-        const updatedData = response.data.student;
+      if (response.success) {
+        const updatedData = response.data;
         setProfileData(updatedData);
-        
-        // Update global user info for immediate UI updates
-        if (field === 'name') {
+
+        if (field === "name") {
           updateGlobalUserInfo({ name: value });
-        } else if (field === 'photoURL') {
+        } else if (field === "photoURL") {
           updateGlobalUserInfo({ photoURL: value });
         }
 
         toast.success("Updated successfully!");
         return true;
-      } else {
-        throw new Error(response.data.message || "Update failed");
       }
+
+      throw new Error(response.message || "Update failed");
     } catch (error) {
       console.error("Error updating field:", error);
       toast.error("Failed to update field");
@@ -521,17 +515,17 @@ const MyProfile = () => {
     try {
       setSavingField(field);
 
-      const response = await axios.patch(
-        `http://localhost:3000/students/${profileData._id}/field`,
-        { field, value }
-      );
+      const response = await API.patch(`/students/${profileData._id}/field`, {
+        field,
+        value,
+      });
 
-      if (response.data.success) {
-        setProfileData(response.data.student);
+      if (response.success) {
+        setProfileData(response.data);
         return true;
-      } else {
-        throw new Error(response.data.message || "Update failed");
       }
+
+      throw new Error(response.message || "Update failed");
     } catch (error) {
       console.error("Error updating array field:", error);
       toast.error("Failed to update");
@@ -567,18 +561,17 @@ const MyProfile = () => {
       }
 
       // Update in database
-      const response = await axios.patch(
-        `http://localhost:3000/students/${profileData._id}/field`,
-        {
-          field: "photoURL",
-          value: imageUrl,
-        }
-      );
+      const response = await API.patch(`/students/${profileData._id}/field`, {
+        field: "photoURL",
+        value: imageUrl,
+      });
 
-      if (response.data.success) {
+      if (response.success) {
         setProfileData((prev) => ({ ...prev, photoURL: imageUrl }));
         updateGlobalUserInfo({ photoURL: imageUrl });
-        toast.success("Profile photo updated successfully!", { id: uploadToast });
+        toast.success("Profile photo updated successfully!", {
+          id: uploadToast,
+        });
       } else {
         throw new Error("Failed to save photo to database");
       }
@@ -669,10 +662,11 @@ const MyProfile = () => {
                   transition={{ delay: 0.1 }}
                   className="text-white/90 text-lg mb-3"
                 >
-                  {profileData.student?.department ? 
-                    departments.find(dept => dept.code === profileData.student.department)?.name || profileData.student.department
-                    : "Department not set"
-                  }
+                  {profileData.student?.department
+                    ? departments.find(
+                        (dept) => dept.code === profileData.student.department,
+                      )?.name || profileData.student.department
+                    : "Department not set"}
                 </motion.p>
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -695,7 +689,9 @@ const MyProfile = () => {
                   {profileData.student?.verified && (
                     <div className="flex items-center gap-2 bg-green-500/20 backdrop-blur-lg px-3 py-1 rounded-full">
                       <Shield size={16} />
-                      <span className="text-sm font-medium">Verified Student</span>
+                      <span className="text-sm font-medium">
+                        Verified Student
+                      </span>
                     </div>
                   )}
                 </motion.div>
@@ -815,8 +811,10 @@ const MyProfile = () => {
         />
         <ContactField
           label="Date of Birth"
-          value={profileData.student?.dateOfBirth ? 
-            new Date(profileData.student.dateOfBirth).toLocaleDateString() : ""
+          value={
+            profileData.student?.dateOfBirth
+              ? new Date(profileData.student.dateOfBirth).toLocaleDateString()
+              : ""
           }
           field="student.dateOfBirth"
           type="date"
@@ -841,7 +839,9 @@ const MyProfile = () => {
       {disabled ? (
         <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl w-full">
           {Icon && <Icon size={20} className="text-gray-400" />}
-          <p className="text-base text-gray-700 flex-1 truncate">{value || "Not provided"}</p>
+          <p className="text-base text-gray-700 flex-1 truncate">
+            {value || "Not provided"}
+          </p>
         </div>
       ) : (
         <div className="w-full">
@@ -884,7 +884,7 @@ const MyProfile = () => {
           value={profileData.student?.department}
           field="student.department"
           type="select"
-          options={departments.map(dept => dept.code)}
+          options={departments.map((dept) => dept.code)}
           optionLabels={departments.reduce((acc, dept) => {
             acc[dept.code] = dept.name;
             return acc;
@@ -975,12 +975,42 @@ const MyProfile = () => {
 
       <div className="space-y-4">
         {[
-          { platform: "linkedin", icon: Linkedin, color: "text-blue-600", baseUrl: "https://linkedin.com/in/" },
-          { platform: "github", icon: Github, color: "text-gray-800", baseUrl: "https://github.com/" },
-          { platform: "portfolio", icon: Globe, color: "text-green-600", baseUrl: "" },
-          { platform: "twitter", icon: Twitter, color: "text-blue-400", baseUrl: "https://twitter.com/" },
-          { platform: "facebook", icon: Facebook, color: "text-blue-600", baseUrl: "https://facebook.com/" },
-          { platform: "instagram", icon: Instagram, color: "text-pink-600", baseUrl: "https://instagram.com/" },
+          {
+            platform: "linkedin",
+            icon: Linkedin,
+            color: "text-blue-600",
+            baseUrl: "https://linkedin.com/in/",
+          },
+          {
+            platform: "github",
+            icon: Github,
+            color: "text-gray-800",
+            baseUrl: "https://github.com/",
+          },
+          {
+            platform: "portfolio",
+            icon: Globe,
+            color: "text-green-600",
+            baseUrl: "",
+          },
+          {
+            platform: "twitter",
+            icon: Twitter,
+            color: "text-blue-400",
+            baseUrl: "https://twitter.com/",
+          },
+          {
+            platform: "facebook",
+            icon: Facebook,
+            color: "text-blue-600",
+            baseUrl: "https://facebook.com/",
+          },
+          {
+            platform: "instagram",
+            icon: Instagram,
+            color: "text-pink-600",
+            baseUrl: "https://instagram.com/",
+          },
         ].map(({ platform, icon: Icon, color, baseUrl }) => (
           <SocialField
             key={platform}
@@ -995,13 +1025,7 @@ const MyProfile = () => {
     </motion.div>
   );
 
-  const SocialField = ({
-    platform,
-    value,
-    icon: Icon,
-    color,
-    baseUrl,
-  }) => (
+  const SocialField = ({ platform, value, icon: Icon, color, baseUrl }) => (
     <div className="flex items-center gap-4 group p-3 hover:bg-gray-50 rounded-xl transition-all w-full">
       <div className={`p-3 rounded-xl bg-gray-100 ${color} flex-shrink-0`}>
         <Icon size={20} />
@@ -1043,7 +1067,7 @@ const MyProfile = () => {
         </div>
         <h3 className="font-bold text-gray-900 text-2xl">About Me</h3>
       </div>
-      
+
       {isEditing ? (
         <InlineEditField
           value={profileData.student?.bio || ""}
@@ -1056,7 +1080,8 @@ const MyProfile = () => {
         />
       ) : (
         <p className="text-gray-700 leading-relaxed text-lg">
-          {profileData.student?.bio || "No bio provided. Click to add your bio and tell us about yourself."}
+          {profileData.student?.bio ||
+            "No bio provided. Click to add your bio and tell us about yourself."}
         </p>
       )}
     </motion.div>
@@ -1096,7 +1121,8 @@ const MyProfile = () => {
                 {skill}
               </span>
             ))}
-            {(!profileData.student?.skills || profileData.student.skills.length === 0) && (
+            {(!profileData.student?.skills ||
+              profileData.student.skills.length === 0) && (
               <div className="text-center py-8 w-full">
                 <BarChart3 size={48} className="text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 text-lg">No skills added yet.</p>
@@ -1143,7 +1169,8 @@ const MyProfile = () => {
                 <span className="text-gray-700 text-lg">{project}</span>
               </div>
             ))}
-            {(!profileData.student?.projects || profileData.student.projects.length === 0) && (
+            {(!profileData.student?.projects ||
+              profileData.student.projects.length === 0) && (
               <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                 <Target size={48} className="text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 text-lg">No projects added yet.</p>
@@ -1190,10 +1217,13 @@ const MyProfile = () => {
                 <span className="text-gray-700 text-lg">{achievement}</span>
               </div>
             ))}
-            {(!profileData.student?.achievements || profileData.student.achievements.length === 0) && (
+            {(!profileData.student?.achievements ||
+              profileData.student.achievements.length === 0) && (
               <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                 <Award size={48} className="text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">No achievements added yet.</p>
+                <p className="text-gray-500 text-lg">
+                  No achievements added yet.
+                </p>
               </div>
             )}
           </div>
@@ -1225,7 +1255,9 @@ const MyProfile = () => {
           {isEditing ? (
             <InlineEditField
               value={profileData.student?.career?.lookingFor || ""}
-              onSave={(value) => updateField("student.career.lookingFor", value)}
+              onSave={(value) =>
+                updateField("student.career.lookingFor", value)
+              }
               className="text-gray-700 w-full"
               placeholder="Internships, Full-time positions, Research opportunities..."
               type="select"
@@ -1235,7 +1267,7 @@ const MyProfile = () => {
                 "Part-time Positions",
                 "Research Opportunities",
                 "Volunteer Work",
-                "Not Currently Looking"
+                "Not Currently Looking",
               ]}
               loading={savingField === "student.career.lookingFor"}
               icon={Target}
@@ -1257,7 +1289,9 @@ const MyProfile = () => {
           {isEditing ? (
             <InlineEditField
               value={profileData.student?.career?.preferredRole || ""}
-              onSave={(value) => updateField("student.career.preferredRole", value)}
+              onSave={(value) =>
+                updateField("student.career.preferredRole", value)
+              }
               className="text-gray-700 w-full"
               placeholder="Software Engineer, Data Scientist, UX Designer..."
               loading={savingField === "student.career.preferredRole"}

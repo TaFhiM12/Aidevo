@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Building2, 
-  MapPin, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  Filter,
+  Building2,
+  MapPin,
+  Clock,
+  CheckCircle,
+  XCircle,
   Eye,
   Calendar,
   AlertCircle,
-  Users
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
-import useAuth from '../../../hooks/useAuth';
-import Loading from '../../../components/common/Loading';
+  Users,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import useAuth from "../../../hooks/useAuth";
+import Loading from "../../../components/common/Loading";
+import API from "../../../utils/api";
 
 const MyApplications = () => {
   const { user } = useAuth();
@@ -35,36 +35,41 @@ const MyApplications = () => {
     { value: 'rejected', label: 'Rejected', color: 'red', icon: XCircle },
   ];
 
-  useEffect(() => {
-    if (user) {
-      fetchApplications();
+ useEffect(() => {
+  if (user?.uid) {
+    fetchApplications();
+  }
+}, [user]);
+
+useEffect(() => {
+  filterApplications();
+}, [applications, searchTerm, selectedStatus]);
+
+const fetchApplications = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    if (!user?.uid) {
+      setApplications([]);
+      return;
     }
-  }, [user]);
 
-  useEffect(() => {
-    filterApplications();
-  }, [applications, searchTerm, selectedStatus]);
+    console.log("Fetching applications for student:", user.uid);
 
-  const fetchApplications = async () => {
-    try {
-      setLoading(true);
-      setError('');
+    const response = await API.get(`/students/${user.uid}/applications`);
+    const applicationsData = Array.isArray(response.data) ? response.data : [];
 
-      console.log('Fetching applications for student:', user.uid);
-
-      const response = await axios.get(
-        `http://localhost:3000/students/${user.uid}/applications`
-      );
-      
-      console.log('Applications fetched:', response.data.applications.length);
-      setApplications(response.data.applications);
-    } catch (error) {
-      console.error('Error fetching applications:', error);
-      setError('Failed to load applications. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log("Applications fetched:", applicationsData.length);
+    setApplications(applicationsData);
+  } catch (error) {
+    console.error("Error fetching applications:", error);
+    setError("Failed to load applications. Please try again.");
+    setApplications([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const filterApplications = () => {
     let filtered = applications;
@@ -142,22 +147,10 @@ const MyApplications = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 py-2 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
-        >
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">
-            My Applications
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Track the status of your organization applications
-          </p>
-        </motion.div>
-
+        
         {/* Error Message */}
         {error && (
           <motion.div

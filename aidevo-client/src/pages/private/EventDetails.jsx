@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { useParams, Link, useNavigate } from 'react-router';
-import { 
-  Calendar, 
-  MapPin, 
-  Users, 
-  Clock, 
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useParams, Link, useNavigate } from "react-router";
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Clock,
   ArrowLeft,
   Share2,
   Heart,
@@ -22,9 +22,9 @@ import {
   Star,
   Users2,
   Clock4,
-  AlertCircle
-} from 'lucide-react';
-import axios from 'axios';
+  AlertCircle,
+} from "lucide-react";
+import API from "../../utils/api";
 
 const EventDetails = () => {
   const { id } = useParams();
@@ -32,7 +32,7 @@ const EventDetails = () => {
   const [event, setEvent] = useState(null);
   const [relatedEvents, setRelatedEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('details');
+  const [activeTab, setActiveTab] = useState("details");
   const [isRegistered, setIsRegistered] = useState(false);
 
   useEffect(() => {
@@ -41,28 +41,37 @@ const EventDetails = () => {
   }, [id]);
 
   const fetchEventDetails = async () => {
-    try {
-      const response = await axios.get(`http://localhost:3000/events/${id}`);
-      if (response.data.success) {
-        setEvent(response.data.event);
-      }
-    } catch (error) {
-      console.error('Error fetching event:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const response = await API.get(`/events/${id}`);
+    
 
-  const fetchRelatedEvents = async () => {
-    try {
-      const response = await axios.get(`http://localhost:3000/events/${id}/related`);
-      if (response.data.success) {
-        setRelatedEvents(response.data.events);
-      }
-    } catch (error) {
-      console.error('Error fetching related events:', error);
+    if (response.success) {
+      setEvent(response.data);
+    } else {
+      setEvent(null);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching event:", error);
+    setEvent(null);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const fetchRelatedEvents = async () => {
+  try {
+    const response = await API.get(`/events/${id}/related`);
+
+    if (response.success) {
+      setRelatedEvents(Array.isArray(response.data) ? response.data : []);
+    } else {
+      setRelatedEvents([]);
+    }
+  } catch (error) {
+    console.error("Error fetching related events:", error);
+    setRelatedEvents([]);
+  }
+};
 
   const handleRegister = async () => {
     // Add your registration logic here
@@ -71,18 +80,18 @@ const EventDetails = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
   const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -92,34 +101,34 @@ const EventDetails = () => {
 
   const getCategoryColor = (category) => {
     const colors = {
-      academic: 'from-blue-500 to-cyan-500',
-      cultural: 'from-purple-500 to-pink-500',
-      sports: 'from-green-500 to-emerald-500',
-      social: 'from-orange-500 to-red-500',
-      religious: 'from-indigo-500 to-purple-500',
-      charity: 'from-rose-500 to-red-500',
-      workshop: 'from-amber-500 to-orange-500',
-      seminar: 'from-teal-500 to-cyan-500',
-      competition: 'from-violet-500 to-purple-500',
-      'blood-donation': 'from-red-500 to-rose-500'
+      academic: "from-blue-500 to-cyan-500",
+      cultural: "from-purple-500 to-pink-500",
+      sports: "from-green-500 to-emerald-500",
+      social: "from-orange-500 to-red-500",
+      religious: "from-indigo-500 to-purple-500",
+      charity: "from-rose-500 to-red-500",
+      workshop: "from-amber-500 to-orange-500",
+      seminar: "from-teal-500 to-cyan-500",
+      competition: "from-violet-500 to-purple-500",
+      "blood-donation": "from-red-500 to-rose-500",
     };
-    return colors[category] || 'from-gray-500 to-gray-700';
+    return colors[category] || "from-gray-500 to-gray-700";
   };
 
   const getCategoryIcon = (category) => {
     const icons = {
-      academic: '📚',
-      cultural: '🎭',
-      sports: '⚽',
-      social: '🎉',
-      religious: '🕌',
-      charity: '🤝',
-      workshop: '🔧',
-      seminar: '💡',
-      competition: '🏆',
-      'blood-donation': '💉'
+      academic: "📚",
+      cultural: "🎭",
+      sports: "⚽",
+      social: "🎉",
+      religious: "🕌",
+      charity: "🤝",
+      workshop: "🔧",
+      seminar: "💡",
+      competition: "🏆",
+      "blood-donation": "💉",
     };
-    return icons[category] || '🎯';
+    return icons[category] || "🎯";
   };
 
   if (loading) {
@@ -143,10 +152,14 @@ const EventDetails = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 pt-20 px-4">
         <div className="max-w-6xl mx-auto text-center py-16">
           <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h2>
-          <p className="text-gray-600 mb-6">The event you're looking for doesn't exist or has been removed.</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Event Not Found
+          </h2>
+          <p className="text-gray-600 mb-6">
+            The event you're looking for doesn't exist or has been removed.
+          </p>
           <button
-            onClick={() => navigate('/events')}
+            onClick={() => navigate("/events")}
             className="bg-gradient-to-r from-[#4bbeff] to-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
           >
             Back to Events
@@ -161,7 +174,7 @@ const EventDetails = () => {
       {/* Back Button */}
       <div className="max-w-6xl mx-auto px-4 py-6">
         <button
-          onClick={() => navigate('/events')}
+          onClick={() => navigate("/events")}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors duration-200 mb-6 group"
         >
           <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
@@ -179,25 +192,31 @@ const EventDetails = () => {
           {/* Event Cover Image */}
           <div className="relative h-80 md:h-96 overflow-hidden">
             {event.cover ? (
-              <img 
-                src={event.cover} 
+              <img
+                src={event.cover}
                 alt={event.title}
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className={`w-full h-full bg-gradient-to-br ${getCategoryColor(event.category)} flex items-center justify-center`}>
-                <span className="text-6xl">{getCategoryIcon(event.category)}</span>
+              <div
+                className={`w-full h-full bg-gradient-to-br ${getCategoryColor(event.category)} flex items-center justify-center`}
+              >
+                <span className="text-6xl">
+                  {getCategoryIcon(event.category)}
+                </span>
               </div>
             )}
-            
+
             {/* Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-            
+
             {/* Header Content */}
             <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
               <div className="flex flex-wrap items-center gap-3 mb-4">
-                <span className={`px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r ${getCategoryColor(event.category)} backdrop-blur-sm`}>
-                  {event.category.replace('-', ' ')}
+                <span
+                  className={`px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r ${getCategoryColor(event.category)} backdrop-blur-sm`}
+                >
+                  {event.category.replace("-", " ")}
                 </span>
                 <span className="px-4 py-2 rounded-full text-sm font-semibold bg-white/20 backdrop-blur-sm flex items-center gap-1">
                   <Building className="w-4 h-4" />
@@ -210,11 +229,11 @@ const EventDetails = () => {
                   </span>
                 )}
               </div>
-              
+
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 leading-tight">
                 {event.title}
               </h1>
-              
+
               <p className="text-xl text-white/90 max-w-3xl leading-relaxed">
                 {event.shortDesc}
               </p>
@@ -242,7 +261,9 @@ const EventDetails = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Date</p>
-                <p className="font-semibold text-gray-900">{formatDate(event.startAt)}</p>
+                <p className="font-semibold text-gray-900">
+                  {formatDate(event.startAt)}
+                </p>
               </div>
             </div>
 
@@ -277,7 +298,7 @@ const EventDetails = () => {
               <div>
                 <p className="text-sm text-gray-600">Capacity</p>
                 <p className="font-semibold text-gray-900">
-                  {event.maxCapacity || 'Unlimited'} spots
+                  {event.maxCapacity || "Unlimited"} spots
                 </p>
               </div>
             </div>
@@ -290,31 +311,31 @@ const EventDetails = () => {
               {/* Tab Navigation */}
               <div className="flex border-b border-gray-200 mb-8">
                 <button
-                  onClick={() => setActiveTab('details')}
+                  onClick={() => setActiveTab("details")}
                   className={`px-6 py-3 font-semibold border-b-2 transition-colors duration-200 ${
-                    activeTab === 'details'
-                      ? 'border-[#4bbeff] text-[#4bbeff]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                    activeTab === "details"
+                      ? "border-[#4bbeff] text-[#4bbeff]"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                 >
                   Event Details
                 </button>
                 <button
-                  onClick={() => setActiveTab('registration')}
+                  onClick={() => setActiveTab("registration")}
                   className={`px-6 py-3 font-semibold border-b-2 transition-colors duration-200 ${
-                    activeTab === 'registration'
-                      ? 'border-[#4bbeff] text-[#4bbeff]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                    activeTab === "registration"
+                      ? "border-[#4bbeff] text-[#4bbeff]"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                 >
                   Registration Info
                 </button>
                 <button
-                  onClick={() => setActiveTab('contact')}
+                  onClick={() => setActiveTab("contact")}
                   className={`px-6 py-3 font-semibold border-b-2 transition-colors duration-200 ${
-                    activeTab === 'contact'
-                      ? 'border-[#4bbeff] text-[#4bbeff]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                    activeTab === "contact"
+                      ? "border-[#4bbeff] text-[#4bbeff]"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
                   }`}
                 >
                   Contact & Support
@@ -322,14 +343,16 @@ const EventDetails = () => {
               </div>
 
               {/* Tab Content */}
-              {activeTab === 'details' && (
+              {activeTab === "details" && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="space-y-6"
                 >
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">About This Event</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">
+                      About This Event
+                    </h3>
                     <p className="text-gray-700 leading-relaxed text-lg">
                       {event.longDesc || event.shortDesc}
                     </p>
@@ -354,8 +377,8 @@ const EventDetails = () => {
                         Tags & Topics
                       </h4>
                       <div className="flex flex-wrap gap-2">
-                        {event.tags.split(',').map((tag, index) => (
-                          <span 
+                        {event.tags.split(",").map((tag, index) => (
+                          <span
                             key={index}
                             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200"
                           >
@@ -368,7 +391,7 @@ const EventDetails = () => {
                 </motion.div>
               )}
 
-              {activeTab === 'registration' && (
+              {activeTab === "registration" && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -379,34 +402,45 @@ const EventDetails = () => {
                       <Users className="w-5 h-5 text-blue-600" />
                       Registration Information
                     </h4>
-                    
+
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-600">Registration Required:</span>
-                        <span className={`font-semibold ${event.registrationRequired ? 'text-green-600' : 'text-gray-600'}`}>
-                          {event.registrationRequired ? 'Yes' : 'No'}
+                        <span className="text-gray-600">
+                          Registration Required:
+                        </span>
+                        <span
+                          className={`font-semibold ${event.registrationRequired ? "text-green-600" : "text-gray-600"}`}
+                        >
+                          {event.registrationRequired ? "Yes" : "No"}
                         </span>
                       </div>
-                      
+
                       {event.registrationRequired && (
                         <>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-600">Max Capacity:</span>
-                            <span className="font-semibold text-gray-900">{event.maxCapacity} people</span>
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-600">Registration Deadline:</span>
                             <span className="font-semibold text-gray-900">
-                              {formatDate(event.registrationDeadline)} at {formatTime(event.registrationDeadline)}
+                              {event.maxCapacity} people
                             </span>
                           </div>
-                          
+
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-600">Participation Fee:</span>
+                            <span className="text-gray-600">
+                              Registration Deadline:
+                            </span>
+                            <span className="font-semibold text-gray-900">
+                              {formatDate(event.registrationDeadline)} at{" "}
+                              {formatTime(event.registrationDeadline)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">
+                              Participation Fee:
+                            </span>
                             <span className="font-semibold text-gray-900 flex items-center gap-1">
                               <DollarSign className="w-4 h-4" />
-                              {parseFloat(event.fee) > 0 ? event.fee : 'Free'}
+                              {parseFloat(event.fee) > 0 ? event.fee : "Free"}
                             </span>
                           </div>
                         </>
@@ -420,13 +454,17 @@ const EventDetails = () => {
                       Target Audience
                     </h4>
                     <p className="text-gray-700">
-                      This event is open to: <span className="font-semibold">{event.targetAudience?.replace('-', ' ') || 'All students'}</span>
+                      This event is open to:{" "}
+                      <span className="font-semibold">
+                        {event.targetAudience?.replace("-", " ") ||
+                          "All students"}
+                      </span>
                     </p>
                   </div>
                 </motion.div>
               )}
 
-              {activeTab === 'contact' && (
+              {activeTab === "contact" && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -437,24 +475,32 @@ const EventDetails = () => {
                       <User className="w-5 h-5 text-purple-600" />
                       Event Coordinator
                     </h4>
-                    
+
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <User className="w-5 h-5 text-gray-400" />
-                        <span className="text-gray-700">{event.contactName}</span>
+                        <span className="text-gray-700">
+                          {event.contactName}
+                        </span>
                       </div>
-                      
+
                       <div className="flex items-center gap-3">
                         <Mail className="w-5 h-5 text-gray-400" />
-                        <a href={`mailto:${event.contactEmail}`} className="text-blue-600 hover:underline">
+                        <a
+                          href={`mailto:${event.contactEmail}`}
+                          className="text-blue-600 hover:underline"
+                        >
                           {event.contactEmail}
                         </a>
                       </div>
-                      
+
                       {event.contactPhone && (
                         <div className="flex items-center gap-3">
                           <Phone className="w-5 h-5 text-gray-400" />
-                          <a href={`tel:${event.contactPhone}`} className="text-gray-700 hover:text-blue-600">
+                          <a
+                            href={`tel:${event.contactPhone}`}
+                            className="text-gray-700 hover:text-blue-600"
+                          >
                             {event.contactPhone}
                           </a>
                         </div>
@@ -468,7 +514,10 @@ const EventDetails = () => {
                       Organizing Body
                     </h4>
                     <p className="text-gray-700">
-                      This event is organized by <span className="font-semibold">{event.organization}</span>
+                      This event is organized by{" "}
+                      <span className="font-semibold">
+                        {event.organization}
+                      </span>
                     </p>
                   </div>
                 </motion.div>
@@ -480,7 +529,7 @@ const EventDetails = () => {
               <div className="sticky top-6">
                 <div className="bg-gradient-to-br from-[#4bbeff] to-blue-500 rounded-2xl p-6 text-white shadow-xl">
                   <h3 className="text-xl font-bold mb-4">Join This Event</h3>
-                  
+
                   <div className="space-y-4 mb-6">
                     <div className="flex items-center gap-2">
                       <Clock4 className="w-5 h-5" />
@@ -501,7 +550,9 @@ const EventDetails = () => {
                   {isRegistered ? (
                     <div className="bg-green-500/20 border border-green-400 rounded-xl p-4 text-center">
                       <p className="font-semibold">🎉 You're Registered!</p>
-                      <p className="text-sm opacity-90 mt-1">Check your email for confirmation</p>
+                      <p className="text-sm opacity-90 mt-1">
+                        Check your email for confirmation
+                      </p>
                     </div>
                   ) : (
                     <button
@@ -509,15 +560,15 @@ const EventDetails = () => {
                       disabled={!isUpcoming(event.startAt)}
                       className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-200 ${
                         isUpcoming(event.startAt)
-                          ? 'bg-white text-blue-600 hover:shadow-2xl hover:scale-105'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          ? "bg-white text-blue-600 hover:shadow-2xl hover:scale-105"
+                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
                       }`}
                     >
-                      {isUpcoming(event.startAt) ? (
-                        event.registrationRequired ? 'Register Now' : 'Mark Attendance'
-                      ) : (
-                        'Event Ended'
-                      )}
+                      {isUpcoming(event.startAt)
+                        ? event.registrationRequired
+                          ? "Register Now"
+                          : "Mark Attendance"
+                        : "Event Ended"}
                     </button>
                   )}
 
@@ -530,7 +581,9 @@ const EventDetails = () => {
 
                 {/* Share Section */}
                 <div className="mt-6 bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                  <h4 className="font-semibold text-gray-900 mb-4">Share This Event</h4>
+                  <h4 className="font-semibold text-gray-900 mb-4">
+                    Share This Event
+                  </h4>
                   <div className="flex gap-3">
                     <button className="flex-1 py-3 bg-blue-100 text-blue-600 rounded-xl font-semibold hover:bg-blue-200 transition-colors duration-200">
                       Facebook
@@ -557,9 +610,11 @@ const EventDetails = () => {
             className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8"
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Related Events</h2>
-              <Link 
-                to="/events" 
+              <h2 className="text-2xl font-bold text-gray-900">
+                Related Events
+              </h2>
+              <Link
+                to="/events"
                 className="flex items-center gap-2 text-[#4bbeff] hover:text-blue-600 font-semibold"
               >
                 View All Events
@@ -568,7 +623,7 @@ const EventDetails = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedEvents.map(relatedEvent => (
+              {relatedEvents.map((relatedEvent) => (
                 <div
                   key={relatedEvent._id}
                   className="bg-gray-50 rounded-2xl p-4 hover:shadow-lg transition-all duration-300 cursor-pointer group"

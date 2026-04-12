@@ -1,78 +1,64 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import axios from "axios";
 import Swal from "sweetalert2";
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Upload, 
-  Users, 
-  PlusCircle, 
-  DollarSign,
-  Tag,
-  Eye,
-  Mail,
-  Phone,
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
   Building,
-  Users2,
-  Target,
-  FileText,
-  Sparkles,
   Heart,
-  Shield,
   Stethoscope,
-  Droplets
+  Droplets,
 } from "lucide-react";
 import { uploadToCloudinary } from "../../../../utils/uploadToCloudinary";
 import useAuth from "../../../../hooks/useAuth";
+import useUserRole from "../../../../hooks/useUserRole";
+import API from "../../../../utils/api";
 
 const BloodBankEventCreation = () => {
-  const {user} = useAuth();
-  const [formData, setFormData] = useState({
-    // Basic Information
-    title: "",
-    shortDesc: "",
-    longDesc: "",
-    organizationEmail: user?.email || "",
-    organization: "Just Blood Bank",
-    
-    // Event Type & Category
-    type: "on-campus",
-    category: "blood-donation",
-    location: "",
-    
-    // Date & Time
-    startAt: "",
-    endAt: "",
-    registrationDeadline: "",
-    
-    // Registration Details
-    registrationRequired: true,
-    maxCapacity: "",
-    fee: "0",
-    
-    // Contact & Organization
-    contactName: "",
-    contactEmail: "",
-    contactPhone: "",
-    
-    // Additional Details
-    tags: "blood-donation, healthcare, community-service, life-saving",
-    visibility: "public",
-    cover: null,
-    requirements: "",
-    targetAudience: "all-students",
+  const { user } = useAuth();
+  const { userInfo } = useUserRole();
 
-    // Blood Bank Specific Fields
-    medicalRequirements: "",
-    bloodTypesNeeded: ["All Blood Types"],
-    donationDuration: 45,
-    medicalStaffCount: "",
-    equipmentProvided: [],
-    postDonationCare: true,
-    eligibilityCriteria: ""
-  });
+  const orgName = userInfo?.organization?.name || "Blood Bank";
+  const orgEmail = userInfo?.email || user?.email || "";
+  const [formData, setFormData] = useState({
+  title: "",
+  shortDesc: "",
+  longDesc: "",
+  organizationEmail: orgEmail,
+  organization: orgName,
+
+  type: "on-campus",
+  category: "blood-donation",
+  location: "",
+
+  startAt: "",
+  endAt: "",
+  registrationDeadline: "",
+
+  registrationRequired: true,
+  maxCapacity: "",
+  fee: "0",
+
+  contactName: "",
+  contactEmail: orgEmail,
+  contactPhone: "",
+
+  tags: "blood-donation, healthcare, community-service, life-saving",
+  visibility: "public",
+  cover: null,
+  requirements: "",
+  targetAudience: "all-students",
+
+  medicalRequirements: "",
+  bloodTypesNeeded: ["All Blood Types"],
+  donationDuration: 45,
+  medicalStaffCount: "",
+  equipmentProvided: [],
+  postDonationCare: true,
+  eligibilityCriteria: "",
+});
 
   const bloodTypes = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-", "All Blood Types"];
   const equipmentOptions = [
@@ -113,106 +99,110 @@ const BloodBankEventCreation = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    try {
-      // Blood bank specific validations
-      if (!formData.medicalRequirements) {
-        Swal.fire({
-          title: "Medical Requirements Missing",
-          text: "Please specify medical requirements for blood donation events",
-          icon: "warning",
-          confirmButtonColor: "#e53e3e",
-        });
-        return;
-      }
+  e.preventDefault();
 
-      if (!formData.medicalStaffCount) {
-        Swal.fire({
-          title: "Medical Staff Required",
-          text: "Please specify the number of medical staff available",
-          icon: "warning",
-          confirmButtonColor: "#e53e3e",
-        });
-        return;
-      }
-
-      let imageUrl = "";
-
-      if (formData.cover) {
-        imageUrl = await uploadToCloudinary(formData.cover);
-      }
-
-      const eventData = {
-        ...formData,
-        cover: imageUrl,
-        organizationType: "blood-bank",
-        specialRequirements: {
-          medicalRequirements: formData.medicalRequirements,
-          bloodTypesNeeded: formData.bloodTypesNeeded,
-          donationDuration: formData.donationDuration,
-          medicalStaffCount: formData.medicalStaffCount,
-          equipmentProvided: formData.equipmentProvided,
-          postDonationCare: formData.postDonationCare,
-          eligibilityCriteria: formData.eligibilityCriteria
-        }
-      };
-
-      const res = await axios.post("http://localhost:3000/events", eventData);
-
-      if (res.data.success) {
-        Swal.fire({
-          title: "🎉 Blood Drive Created!",
-          text: "Your blood donation event has been scheduled successfully.",
-          icon: "success",
-          confirmButtonColor: "#e53e3e",
-        });
-        
-        // Reset form
-        setFormData({
-          title: "",
-          shortDesc: "",
-          longDesc: "",
-          organization: "Blood Bank",
-          type: "on-campus",
-          category: "blood-donation",
-          location: "",
-          startAt: "",
-          endAt: "",
-          registrationDeadline: "",
-          registrationRequired: true,
-          maxCapacity: "",
-          fee: "0",
-          contactName: "",
-          contactEmail: "",
-          contactPhone: "",
-          tags: "blood-donation, healthcare, community-service, life-saving",
-          visibility: "public",
-          cover: null,
-          requirements: "",
-          targetAudience: "all-students",
-          medicalRequirements: "",
-          bloodTypesNeeded: ["All Blood Types"],
-          donationDuration: 45,
-          medicalStaffCount: "",
-          equipmentProvided: [],
-          postDonationCare: true,
-          eligibilityCriteria: ""
-        });
-      }
-    } catch (err) {
-      console.error(err);
+  try {
+    if (!formData.medicalRequirements) {
       Swal.fire({
-        title: "❌ Error Creating Blood Drive",
-        text: err.response?.data?.message || "Failed to create blood donation event",
-        icon: "error",
-        confirmButtonColor: "#ef4444",
+        title: "Medical Requirements Missing",
+        text: "Please specify medical requirements for blood donation events",
+        icon: "warning",
+        confirmButtonColor: "#e53e3e",
       });
+      return;
     }
-  };
+
+    if (!formData.medicalStaffCount) {
+      Swal.fire({
+        title: "Medical Staff Required",
+        text: "Please specify the number of medical staff available",
+        icon: "warning",
+        confirmButtonColor: "#e53e3e",
+      });
+      return;
+    }
+
+    let imageUrl = "";
+
+    if (formData.cover) {
+      imageUrl = await uploadToCloudinary(formData.cover);
+    }
+
+    const eventData = {
+      ...formData,
+      organizationEmail: orgEmail,
+      organization: orgName,
+      cover: imageUrl,
+      organizationType: "blood-bank",
+      specialRequirements: {
+        medicalRequirements: formData.medicalRequirements,
+        bloodTypesNeeded: formData.bloodTypesNeeded,
+        donationDuration: formData.donationDuration,
+        medicalStaffCount: formData.medicalStaffCount,
+        equipmentProvided: formData.equipmentProvided,
+        postDonationCare: formData.postDonationCare,
+        eligibilityCriteria: formData.eligibilityCriteria,
+      },
+    };
+
+    const res = await API.post("/events", eventData);
+
+    if (res.success) {
+      Swal.fire({
+        title: "🎉 Blood Drive Created!",
+        text: "Your blood donation event has been scheduled successfully.",
+        icon: "success",
+        confirmButtonColor: "#e53e3e",
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        title: "",
+        shortDesc: "",
+        longDesc: "",
+        organizationEmail: orgEmail,
+        organization: orgName,
+        type: "on-campus",
+        category: "blood-donation",
+        location: "",
+        startAt: "",
+        endAt: "",
+        registrationDeadline: "",
+        registrationRequired: true,
+        maxCapacity: "",
+        fee: "0",
+        contactName: "",
+        contactEmail: orgEmail,
+        contactPhone: "",
+        tags: "blood-donation, healthcare, community-service, life-saving",
+        visibility: "public",
+        cover: null,
+        requirements: "",
+        targetAudience: "all-students",
+        medicalRequirements: "",
+        bloodTypesNeeded: ["All Blood Types"],
+        donationDuration: 45,
+        medicalStaffCount: "",
+        equipmentProvided: [],
+        postDonationCare: true,
+        eligibilityCriteria: "",
+      }));
+    } else {
+      throw new Error(res.message || "Failed to create blood donation event");
+    }
+  } catch (err) {
+    console.error(err);
+    Swal.fire({
+      title: "❌ Error Creating Blood Drive",
+      text: err?.response?.data?.message || err?.message || "Failed to create blood donation event",
+      icon: "error",
+      confirmButtonColor: "#ef4444",
+    });
+  }
+};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 pb-10 px-4">
+    <div className="min-h-screen  pb-10 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <motion.div

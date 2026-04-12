@@ -6,6 +6,7 @@ import {
   Send,
   GraduationCap,
   MapPin,
+  Building2,
   User,
   ChevronLeft,
   Menu,
@@ -18,8 +19,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import socketService from '../../../utils/Socket';
-import axios from 'axios';
+import API from '../../../utils/api';
 import useAuth from '../../../hooks/useAuth';
+import { getOtherParticipant } from '../../../utils/chatParticipant';
 
 const OrganizationCommunication = () => {
   const { user } = useAuth();
@@ -29,43 +31,230 @@ const OrganizationCommunication = () => {
   const [newMessage, setNewMessage] = useState('');
   const [students, setStudents] = useState([]);
   const [organizationMembers, setOrganizationMembers] = useState([]);
+  const [allOrganizations, setAllOrganizations] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileView, setMobileView] = useState('sidebar');
   const [activeTab, setActiveTab] = useState('chats');
-  const [organizationId, setOrganizationId] = useState(null);
+  const [currentUserObjectId, setCurrentUserObjectId] = useState(null);
   const [showNewChat, setShowNewChat] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false); // ADD THIS
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
   const messagesEndRef = useRef(null);
 
-  const socket = socketService.getSocket();
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+    };
 
-  
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const fetchCurrentUserObjectId = async () => {
+    try {
+      const response = await API.get(`/users/uid/${user.uid}`);
+      const appUser = response.data;
+      const objectId = appUser?._id || null;
+      setCurrentUserObjectId(objectId);
+      return objectId;
+    } catch (error) {
+      console.error("Error fetching organization object id:", error);
+      setCurrentUserObjectId(null);
+      return null;
+    }
+  };
+
+  const fetchConversations = async () => {
+    try {
+      const response = await API.get(`/conversations/user/${user.uid}`);
+      setConversations(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      setConversations([]);
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const response = await API.get('/students');
+      setStudents(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      setStudents([]);
+    }
+  };
+
+  const fetchOrganizationMembers = async () => {
+    try {
+      if (!currentUserObjectId) return;
+      
+      const response = await API.get(`/organizations/${currentUserObjectId}/members`);
+      setOrganizationMembers(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Error fetching organization members:', error);
+      setOrganizationMembers([]);
+    }
+  };
+
+  const fetchAllOrganizations = async () => {
+    try {
+      const response = await API.get("/organizations");
+      const organizationsData = Array.isArray(response.data) ? response.data : [];
+
+      const filtered = organizationsData.filter(
+        (org) => String(org._id) !== String(currentUserObjectId)
+      );
+
+      setAllOrganizations(filtered);
+    } catch (error) {
+      console.error("Error fetching organizations:", error);
+      setAllOrganizations([]);
+    }
+  };
+
+  const fetchMessages = async (conversationId) => {
+    try {
+      const response = await API.get(`/conversations/${conversationId}/messages`);
+      setMessages(Array.isArray(response.data) ? response.data : []);
+
+      const socket = socketService.getSocket();
+      if (socket && conversationId && currentUserObjectId) {
+        socket.emit("mark_as_read", {
+          conversationId,
+          userId: currentUserObjectId,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      setMessages([]);
+    }
+  };
+
+  const joinConversation = (conversationId) => {
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.emit("join_conversation", conversationId);
+    }
+  };
+
+  const handleNewMessage = useCallback((message) => {
+    const normalizedConversationId =
+      typeof message.conversationId === "object" &&
+      message.conversationId !== null &&
+      "$oid" in message.conversationId
+        ? message.conversationId.$oid
+        : String(message.conversationId);
+
+    const selectedConversationId = selectedConversation?._id
+      ? String(selectedConversation._id)
+      : null;
+
+    if (
+      selectedConversationId &&
+      normalizedConversationId === selectedConversationId
+    ) {
+      setMessages((prev) => [...prev, message]);
+
+      setConversations((prev) =>
+        prev.map((conv) =>
+          String(conv._id) === normalizedConversationId
+            ? {
+                ...conv,
+                lastMessage: message.text,
+                lastMessageTime: message.timestamp,
+                unreadCount:
+                  String(conv._id) === selectedConversationId
+                    ? 0
+                    : (conv.unreadCount || 0) + 1,
+              }
+            : conv
+        )
+      );
+    } else {
+      setConversations((prev) =>
+        prev.map((conv) =>
+          String(conv._id) === normalizedConversationId
+            ? {
+                ...conv,
+                lastMessage: message.text,
+                lastMessageTime: message.timestamp,
+                unreadCount: (conv.unreadCount || 0) + 1,
+              }
+            : conv
+        )
+      );
+    }
+  }, [selectedConversation]);
+
+  const handleMessagesRead = useCallback(() => {}, []);
 
   useEffect(() => {
-    if (user) {
-      fetchOrganizationId();
-    }
+    const socket = socketService.connect();
+
+    socket.on("connect", () => {
+      console.log("✅ Socket connected");
+      setSocketConnected(true);
+
+      if (selectedConversation?._id) {
+        socket.emit("join_conversation", selectedConversation._id);
+      }
+    });
+
+    socket.on("disconnect", () => {
+      console.log("❌ Socket disconnected");
+      setSocketConnected(false);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      setSocketConnected(false);
+    });
+
+    socket.on("receive_message", handleNewMessage);
+    socket.on("messages_read", handleMessagesRead);
+
+    return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("connect_error");
+      socket.off("receive_message", handleNewMessage);
+      socket.off("messages_read", handleMessagesRead);
+    };
+  }, [handleNewMessage, handleMessagesRead, selectedConversation]);
+
+  useEffect(() => {
+    const init = async () => {
+      if (!user?.uid) return;
+
+      const objectId = await fetchCurrentUserObjectId();
+      if (!objectId) return;
+
+      await Promise.all([
+        fetchConversations(),
+        fetchStudents(),
+        fetchOrganizationMembers(),
+        fetchAllOrganizations(),
+      ]);
+    };
+
+    init();
   }, [user]);
 
   useEffect(() => {
-    if (organizationId) {
-      fetchConversations();
-      fetchStudents();
-      fetchOrganizationMembers();
-    }
-  }, [organizationId]);
-
-  useEffect(() => {
-    if (selectedConversation) {
+    if (selectedConversation?._id) {
       fetchMessages(selectedConversation._id);
       joinConversation(selectedConversation._id);
-      if (window.innerWidth < 1024) {
-        setMobileView('chat');
+
+      if (isMobile) {
+        setMobileView("chat");
       }
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, currentUserObjectId, isMobile]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,163 +264,32 @@ const OrganizationCommunication = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Get organization MongoDB ID first
-  const fetchOrganizationId = async () => {
-    try {
-      const response = await axios.get(`http://localhost:3000/users/uid/${user.uid}`);
-      if (response.data.success) {
-        setOrganizationId(response.data.user._id);
-      }
-    } catch (error) {
-      console.error('Error fetching organization ID:', error);
-    }
-  };
-
-  const fetchConversations = async () => {
-    try {
-      const response = await axios.get(`http://localhost:3000/conversations/${user.uid}`);
-      setConversations(response.data.conversations);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    }
-  };
-
-  const fetchStudents = async () => {
-    try {
-      const response = await axios.get('http://localhost:3000/students');
-      setStudents(response.data.students);
-    } catch (error) {
-      console.error('Error fetching students:', error);
-    }
-  };
-
-  const fetchOrganizationMembers = async () => {
-    try {
-      if (!organizationId) return;
-      
-      const response = await axios.get(`http://localhost:3000/organizations/email/${user.email}/members`);
-      setOrganizationMembers(response.data.members);
-    } catch (error) {
-      console.error('Error fetching organization members:', error);
-      setOrganizationMembers([]);
-    }
-  };
-
-  const fetchMessages = async (conversationId) => {
-    try {
-      const response = await axios.get(`http://localhost:3000/conversations/${conversationId}/messages`);
-      setMessages(response.data.messages);
-      
-      if (socket && conversationId) {
-        socket.emit('mark_as_read', {
-          conversationId,
-          userId: user.uid
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-    }
-  };
-
-  const joinConversation = (conversationId) => {
-    if (socket) {
-      socket.emit('join_conversation', conversationId);
-    }
-  };
-
-  const handleNewMessage = useCallback((message) => {
-    if (selectedConversation && message.conversationId === selectedConversation._id) {
-      setMessages(prev => [...prev, message]);
-      
-      setConversations(prev => 
-        prev.map(conv => 
-          conv._id === message.conversationId 
-            ? { 
-                ...conv, 
-                lastMessage: message.text,
-                lastMessageTime: message.timestamp,
-                unreadCount: conv._id === selectedConversation._id ? 0 : conv.unreadCount + 1
-              }
-            : conv
-        )
-      );
-    } else {
-      setConversations(prev => 
-        prev.map(conv => 
-          conv._id === message.conversationId 
-            ? { ...conv, unreadCount: (conv.unreadCount || 0) + 1 }
-            : conv
-        )
-      );
-    }
-  }, [selectedConversation]);
-
-  const handleMessagesRead = (data) => {
-    // Handle read receipts
-  };
-
-  useEffect(() => {
-    // Connect to socket
-    const socket = socketService.connect();
-    
-    // Set up connection status listeners
-    socket.on('connect', () => {
-      console.log('✅ Socket connected');
-      setSocketConnected(true);
-      
-      // Re-join conversation if one was selected before refresh
-      if (selectedConversation) {
-        socket.emit('join_conversation', selectedConversation._id);
-      }
-    });
-
-    socket.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
-      setSocketConnected(false);
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      setSocketConnected(false);
-    });
-
-    // Your existing socket listeners
-    socket.on('receive_message', handleNewMessage);
-    socket.on('messages_read', handleMessagesRead);
-
-    return () => {
-      // Clean up all listeners
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('connect_error');
-      socket.off('receive_message', handleNewMessage);
-      socket.off('messages_read', handleMessagesRead);
-    };
-  }, [handleNewMessage, handleMessagesRead, selectedConversation]);
-
-  const startNewChat = async (student) => {
+  const startNewChat = async (targetUser) => {
     try {
       setLoading(true);
-      
-      // Get student MongoDB _id from their Firebase UID
-      const studentResponse = await axios.get(`http://localhost:3000/users/uid/${student.uid}`);
-      const studentMongoId = studentResponse.data.user._id;
 
-      const response = await axios.post('http://localhost:3000/conversations', {
-        studentId: studentMongoId,
-        organizationId: organizationId
+      if (!currentUserObjectId) {
+        throw new Error("Organization ID not found");
+      }
+
+      const response = await API.post("/conversations", {
+        participantAId: currentUserObjectId,
+        participantBId: targetUser._id,
       });
 
-      setSelectedConversation(response.data.conversation);
+      const conversation = response.data;
+
+      setSelectedConversation(conversation);
       setShowNewChat(false);
-      setSearchTerm('');
-      setActiveTab('chats');
-      
-      if (!conversations.find(conv => conv._id === response.data.conversation._id)) {
-        setConversations(prev => [response.data.conversation, ...prev]);
-      }
+      setSearchTerm("");
+      setActiveTab("chats");
+
+      setConversations((prev) => {
+        const exists = prev.find((conv) => String(conv._id) === String(conversation._id));
+        return exists ? prev : [conversation, ...prev];
+      });
     } catch (error) {
-      console.error('Error starting new chat:', error);
+      console.error("Error starting new chat:", error);
     } finally {
       setLoading(false);
     }
@@ -239,41 +297,60 @@ const OrganizationCommunication = () => {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedConversation || !socket || !organizationId) return;
+    const socket = socketService.getSocket();
+
+    if (
+      !newMessage.trim() ||
+      !selectedConversation ||
+      !socket ||
+      !currentUserObjectId
+    ) {
+      return;
+    }
 
     const messageData = {
       conversationId: selectedConversation._id,
-      senderId: organizationId,
-      senderName: user.organization?.name || user.name,
-      senderRole: 'organization',
+      senderId: currentUserObjectId,
+      senderName: user.displayName || user.name,
+      senderRole: "organization",
       senderPhoto: user.photoURL,
-      text: newMessage.trim()
+      text: newMessage.trim(),
     };
 
-    socket.emit('send_message', messageData);
-    setNewMessage('');
+    socket.emit("send_message", messageData);
+    setNewMessage("");
   };
 
   const formatTime = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!timestamp) return "";
+    return new Date(timestamp).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const formatJoinDate = (timestamp) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric'
+    if (!timestamp) return "";
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
     });
   };
 
   // Filter conversations for chat tab
-  const filteredConversations = conversations.filter(conv =>
-    conv.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conv.studentInfo?.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conv.studentInfo?.studentId?.includes(searchTerm)
-  );
+  const filteredConversations = conversations.filter((conv) => {
+    const other = getOtherParticipant(conv, currentUserObjectId);
+    if (!other) return false;
+
+    return (
+      other.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      other.meta?.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      other.meta?.campus?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      other.meta?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      other.meta?.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      other.meta?.studentId?.includes(searchTerm)
+    );
+  });
 
   // Filter members for members tab
   const filteredMembers = organizationMembers.filter(member =>
@@ -281,6 +358,16 @@ const OrganizationCommunication = () => {
     member.studentEmail?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.studentInfo?.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.studentInfo?.studentId?.includes(searchTerm)
+  );
+
+  // Filter organizations for organizations tab
+  const filteredOrganizationsList = allOrganizations.filter(
+    (org) =>
+      org.organization?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.organization?.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.organization?.campus?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getMemberRoleBadge = (member) => {
@@ -300,7 +387,9 @@ const OrganizationCommunication = () => {
     );
   };
 
-  const isMobile = window.innerWidth < 1024;
+  const selectedOtherParticipant = selectedConversation
+    ? getOtherParticipant(selectedConversation, currentUserObjectId)
+    : null;
 
   return (
     <div className="h-full bg-gray-50">
@@ -319,7 +408,6 @@ const OrganizationCommunication = () => {
                 <>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-bold text-gray-900">Communication</h2>
-                    {/* ADD CONNECTION STATUS INDICATOR */}
                     <div className="flex items-center gap-1 text-xs">
                       <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
                       <span className={socketConnected ? 'text-green-600' : 'text-red-600'}>
@@ -397,6 +485,19 @@ const OrganizationCommunication = () => {
                       </span>
                     </div>
                   </button>
+                  <button
+                    onClick={() => setActiveTab('organizations')}
+                    className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-all duration-200 ${
+                      activeTab === 'organizations'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      Orgs
+                    </div>
+                  </button>
                 </div>
 
                 {/* Search Bar */}
@@ -407,7 +508,9 @@ const OrganizationCommunication = () => {
                     placeholder={
                       activeTab === 'chats' 
                         ? "Search conversations..." 
-                        : "Search members..."
+                        : activeTab === 'members'
+                        ? "Search members..."
+                        : "Search organizations..."
                     }
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -426,58 +529,82 @@ const OrganizationCommunication = () => {
                 {activeTab === 'chats' && (
                   <div>
                     <AnimatePresence>
-                      {filteredConversations.map((conversation, index) => (
-                        <motion.div
-                          key={conversation._id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          onClick={() => {
-                            setSelectedConversation(conversation);
-                            if (isMobile) setMobileView('chat');
-                          }}
-                          className={`p-3 border-b border-gray-100 cursor-pointer transition-all duration-200 group ${
-                            selectedConversation?._id === conversation._id
-                              ? 'bg-blue-50 border-blue-200'
-                              : 'hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="relative flex-shrink-0">
-                              <img
-                                src={conversation.studentPhoto || `https://ui-avatars.com/api/?name=${conversation.studentName}&background=4bbeff&color=fff`}
-                                alt={conversation.studentName}
-                                className="w-12 h-12 rounded-xl object-cover"
-                              />
-                              {conversation.unreadCount > 0 && (
-                                <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                  {conversation.unreadCount}
+                      {filteredConversations.map((conversation, index) => {
+                        const other = getOtherParticipant(conversation, currentUserObjectId);
+                        if (!other) return null;
+
+                        return (
+                          <motion.div
+                            key={conversation._id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            onClick={() => {
+                              setSelectedConversation(conversation);
+                              if (isMobile) setMobileView('chat');
+                            }}
+                            className={`p-3 border-b border-gray-100 cursor-pointer transition-all duration-200 group ${
+                              selectedConversation?._id === conversation._id
+                                ? 'bg-blue-50 border-blue-200'
+                                : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="relative flex-shrink-0">
+                                <img
+                                  src={other.photo || `https://ui-avatars.com/api/?name=${other.name}&background=4bbeff&color=fff`}
+                                  alt={other.name}
+                                  className="w-12 h-12 rounded-xl object-cover"
+                                />
+                                {conversation.unreadCount > 0 && (
+                                  <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                    {conversation.unreadCount}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-semibold text-gray-900 text-sm truncate">
+                                    {other.name}
+                                  </h3>
+                                  <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                                    {conversation.lastMessageTime ? formatTime(conversation.lastMessageTime) : ''}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-gray-900 text-sm truncate">
-                                  {conversation.studentName}
-                                </h3>
-                                <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                                  {conversation.lastMessageTime ? formatTime(conversation.lastMessageTime) : ''}
-                                </span>
+                                <p className="text-xs text-gray-600 truncate mt-1">
+                                  {conversation.lastMessage || 'No messages yet'}
+                                </p>
+                                <div className="flex items-center gap-1 mt-1">
+                                  {other.meta?.studentId ? (
+                                    <>
+                                      <GraduationCap className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                      <span className="text-xs text-gray-500 truncate">
+                                        {other.meta.studentId} • {other.meta.department}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Building2 className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                      <span className="text-xs text-gray-500 truncate">
+                                        {other.meta?.type || other.role}
+                                      </span>
+                                      {other.meta?.campus && (
+                                        <>
+                                          <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                          <span className="text-xs text-gray-500 truncate">
+                                            {other.meta.campus}
+                                          </span>
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-xs text-gray-600 truncate mt-1">
-                                {conversation.lastMessage || 'No messages yet'}
-                              </p>
-                              <div className="flex items-center gap-1 mt-1">
-                                <GraduationCap className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                                <span className="text-xs text-gray-500 truncate">
-                                  {conversation.studentInfo?.studentId} • {conversation.studentInfo?.department}
-                                </span>
-                              </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        );
+                      })}
                     </AnimatePresence>
 
                     {filteredConversations.length === 0 && (
@@ -485,7 +612,7 @@ const OrganizationCommunication = () => {
                         <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                         <p className="text-gray-500 text-sm">No conversations found</p>
                         <p className="text-xs text-gray-400 mt-1">
-                          Start a conversation with your members
+                          Start a conversation with your members or other organizations
                         </p>
                       </div>
                     )}
@@ -507,79 +634,87 @@ const OrganizationCommunication = () => {
                     </div>
 
                     <AnimatePresence>
-                      {filteredMembers.map((member, index) => (
-                        <motion.div
-                          key={member._id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                          className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 group"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <img
-                              src={member.studentPhoto || `https://ui-avatars.com/api/?name=${member.studentName}&background=4bbeff&color=fff`}
-                              alt={member.studentName}
-                              className="w-12 h-12 rounded-xl object-cover"
-                            />
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-gray-900 text-sm truncate">
-                                  {member.studentName}
-                                </h3>
-                                {getMemberRoleBadge(member)}
-                              </div>
-                              
-                              <div className="flex items-center gap-2 mt-1">
-                                <Mail className="w-3 h-3 text-gray-400" />
-                                <span className="text-xs text-gray-500 truncate">
-                                  {member.studentEmail}
-                                </span>
-                              </div>
-                              
-                              <div className="flex items-center gap-2 mt-1">
-                                <GraduationCap className="w-3 h-3 text-gray-400" />
-                                <span className="text-xs text-gray-500">
-                                  {member.studentInfo?.studentId} • {member.studentInfo?.department}
-                                </span>
-                              </div>
+                      {filteredMembers.map((member, index) => {
+                        // Find existing conversation by userId
+                        const existingConv = conversations.find((conv) => {
+                          const other = getOtherParticipant(conv, currentUserObjectId);
+                          return String(other?.userId) === String(member.studentId);
+                        });
 
-                              <div className="flex items-center gap-2 mt-1">
-                                <Calendar className="w-3 h-3 text-gray-400" />
-                                <span className="text-xs text-gray-500">
-                                  Joined {formatJoinDate(member.joinedAt)}
-                                </span>
-                              </div>
+                        return (
+                          <motion.div
+                            key={member._id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 group"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <img
+                                src={member.studentPhoto || `https://ui-avatars.com/api/?name=${member.studentName}&background=4bbeff&color=fff`}
+                                alt={member.studentName}
+                                className="w-12 h-12 rounded-xl object-cover"
+                              />
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-semibold text-gray-900 text-sm truncate">
+                                    {member.studentName}
+                                  </h3>
+                                  {getMemberRoleBadge(member)}
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Mail className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500 truncate">
+                                    {member.studentEmail}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mt-1">
+                                  <GraduationCap className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500">
+                                    {member.studentInfo?.studentId} • {member.studentInfo?.department}
+                                  </span>
+                                </div>
 
-                              <div className="flex items-center gap-2 mt-2">
-                                <motion.button
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => {
-                                    // Find or create conversation with this member
-                                    const existingConv = conversations.find(
-                                      conv => conv.studentName === member.studentName
-                                    );
-                                    if (existingConv) {
-                                      setSelectedConversation(existingConv);
-                                      if (isMobile) setMobileView('chat');
-                                    } else {
-                                      // Find the student in the students list to get their UID
-                                      const student = students.find(s => s.email === member.studentEmail);
-                                      if (student) {
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Calendar className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500">
+                                    Joined {formatJoinDate(member.joinedAt)}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-2">
+                                  <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => {
+                                      if (existingConv) {
+                                        setSelectedConversation(existingConv);
+                                        if (isMobile) setMobileView('chat');
+                                      } else {
+                                        // Create student object to start chat
+                                        const student = {
+                                          _id: member.studentId,
+                                          name: member.studentName,
+                                          email: member.studentEmail,
+                                          photoURL: member.studentPhoto,
+                                          meta: member.studentInfo
+                                        };
                                         startNewChat(student);
                                       }
-                                    }
-                                  }}
-                                  className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors duration-200"
-                                >
-                                  Message
-                                </motion.button>
+                                    }}
+                                    className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                                  >
+                                    Message
+                                  </motion.button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </motion.div>
-                      ))}
+                          </motion.div>
+                        );
+                      })}
                     </AnimatePresence>
 
                     {filteredMembers.length === 0 && (
@@ -588,6 +723,108 @@ const OrganizationCommunication = () => {
                         <p className="text-gray-500 text-sm">No members found</p>
                         <p className="text-xs text-gray-400 mt-1">
                           {searchTerm ? 'Try adjusting your search' : 'No members have joined yet'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Organizations Tab */}
+                {activeTab === 'organizations' && (
+                  <div>
+                    <div className="p-3 bg-green-50 border-b border-green-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-green-900">
+                          Other Organizations
+                        </span>
+                        <span className="text-lg font-bold text-green-600">
+                          {allOrganizations.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    <AnimatePresence>
+                      {filteredOrganizationsList.map((org, index) => {
+                        // Find existing conversation by userId
+                        const existingConv = conversations.find((conv) => {
+                          const other = getOtherParticipant(conv, currentUserObjectId);
+                          return String(other?.userId) === String(org._id);
+                        });
+
+                        return (
+                          <motion.div
+                            key={org._id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 group"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <img
+                                src={org.photoURL || `https://ui-avatars.com/api/?name=${org.organization?.name || org.name}&background=4bbeff&color=fff`}
+                                alt={org.organization?.name || org.name}
+                                className="w-12 h-12 rounded-xl object-cover"
+                              />
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-semibold text-gray-900 text-sm truncate">
+                                    {org.organization?.name || org.name}
+                                  </h3>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Mail className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500 truncate">
+                                    {org.email}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Building2 className="w-3 h-3 text-gray-400" />
+                                  <span className="text-xs text-gray-500">
+                                    {org.organization?.type}
+                                  </span>
+                                  {org.organization?.campus && (
+                                    <>
+                                      <MapPin className="w-3 h-3 text-gray-400" />
+                                      <span className="text-xs text-gray-500">
+                                        {org.organization.campus}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-2">
+                                  <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => {
+                                      if (existingConv) {
+                                        setSelectedConversation(existingConv);
+                                        if (isMobile) setMobileView('chat');
+                                      } else {
+                                        startNewChat(org);
+                                      }
+                                    }}
+                                    className="text-xs bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                                  >
+                                    Message
+                                  </motion.button>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+
+                    {filteredOrganizationsList.length === 0 && (
+                      <div className="text-center py-8 px-4">
+                        <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 text-sm">No organizations found</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {searchTerm ? 'Try adjusting your search' : 'No other organizations available'}
                         </p>
                       </div>
                     )}
@@ -619,6 +856,17 @@ const OrganizationCommunication = () => {
                 >
                   <Users className="w-5 h-5" />
                 </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('organizations');
+                    setSidebarOpen(true);
+                  }}
+                  className={`p-3 rounded-xl transition-all duration-200 ${
+                    activeTab === 'organizations' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Building2 className="w-5 h-5" />
+                </button>
               </div>
             )}
           </div>
@@ -644,25 +892,52 @@ const OrganizationCommunication = () => {
                       </button>
                     )}
                     <img
-                      src={selectedConversation.studentPhoto || `https://ui-avatars.com/api/?name=${selectedConversation.studentName}&background=4bbeff&color=fff`}
-                      alt={selectedConversation.studentName}
+                      src={selectedOtherParticipant?.photo || `https://ui-avatars.com/api/?name=${selectedOtherParticipant?.name || "User"}&background=4bbeff&color=fff`}
+                      alt={selectedOtherParticipant?.name || "User"}
                       className="w-10 h-10 rounded-xl object-cover"
                     />
                     <div>
                       <h3 className="font-semibold text-gray-900 text-sm">
-                        {selectedConversation.studentName}
+                        {selectedOtherParticipant?.name || "Unknown User"}
                       </h3>
                       <div className="flex items-center gap-3 text-xs text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          <span>ID: {selectedConversation.studentInfo?.studentId}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <GraduationCap className="w-3 h-3" />
-                          <span>{selectedConversation.studentInfo?.department}</span>
-                        </div>
+                        {selectedOtherParticipant?.meta?.studentId ? (
+                          <>
+                            <div className="flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              <span>ID: {selectedOtherParticipant.meta.studentId}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <GraduationCap className="w-3 h-3" />
+                              <span>{selectedOtherParticipant.meta.department}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1">
+                              <Building2 className="w-3 h-3" />
+                              <span>{selectedOtherParticipant?.meta?.type || selectedOtherParticipant?.role}</span>
+                            </div>
+                            {selectedOtherParticipant?.meta?.campus && (
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                <span>{selectedOtherParticipant.meta.campus}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-2 text-xs justify-end mb-1">
+                      <div className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className={socketConnected ? 'text-green-600' : 'text-red-600'}>
+                        {socketConnected ? 'Connected' : 'Disconnected'}
+                      </span>
+                    </div>
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <p className="text-xs text-green-600 mt-1">Online</p>
                   </div>
                 </div>
               </div>
@@ -670,29 +945,33 @@ const OrganizationCommunication = () => {
               {/* Messages Area - Scrollable */}
               <div className="flex-1 overflow-y-auto bg-gray-50/50 p-4">
                 <div className="space-y-3 max-w-4xl mx-auto">
-                  {messages.map((message, index) => (
-                    <motion.div
-                      key={message._id || index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${message.senderRole === 'organization' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md rounded-2xl p-3 ${
-                          message.senderRole === 'organization'
-                            ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-br-none'
-                            : 'bg-white text-gray-900 rounded-bl-none shadow-sm border border-gray-200'
-                        }`}
+                  {messages.map((message, index) => {
+                    const isOwnMessage = String(message.senderId) === String(currentUserObjectId);
+                    
+                    return (
+                      <motion.div
+                        key={message._id || index}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                       >
-                        <p className="text-sm leading-relaxed">{message.text}</p>
-                        <div className={`flex items-center justify-end space-x-1 mt-2 text-xs ${
-                          message.senderRole === 'organization' ? 'text-blue-100' : 'text-gray-500'
-                        }`}>
-                          <span>{formatTime(message.timestamp)}</span>
+                        <div
+                          className={`max-w-xs lg:max-w-md rounded-2xl p-3 ${
+                            isOwnMessage
+                              ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-br-none'
+                              : 'bg-white text-gray-900 rounded-bl-none shadow-sm border border-gray-200'
+                          }`}
+                        >
+                          <p className="text-sm leading-relaxed">{message.text}</p>
+                          <div className={`flex items-center justify-end space-x-1 mt-2 text-xs ${
+                            isOwnMessage ? 'text-blue-100' : 'text-gray-500'
+                          }`}>
+                            <span>{formatTime(message.timestamp)}</span>
+                          </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
 
@@ -701,7 +980,7 @@ const OrganizationCommunication = () => {
                     <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">No messages yet</p>
                     <p className="text-sm text-gray-400 mt-2">
-                      Start a conversation with {selectedConversation.studentName}
+                      Start a conversation with {selectedOtherParticipant?.name || "this user"}
                     </p>
                   </div>
                 )}
@@ -734,12 +1013,15 @@ const OrganizationCommunication = () => {
               <div className="text-center">
                 <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {activeTab === 'chats' ? 'Select a conversation' : 'Organization Members'}
+                  {activeTab === 'chats' ? 'Select a conversation' : 
+                   activeTab === 'members' ? 'Organization Members' : 'Other Organizations'}
                 </h3>
                 <p className="text-gray-500 text-sm">
                   {activeTab === 'chats' 
                     ? 'Choose a conversation from the list to start messaging'
-                    : 'Manage and communicate with your organization members'
+                    : activeTab === 'members'
+                    ? 'Manage and communicate with your organization members'
+                    : 'Connect and collaborate with other organizations'
                   }
                 </p>
               </div>
@@ -780,7 +1062,7 @@ const OrganizationCommunication = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
                     type="text"
-                    placeholder="Search students..."
+                    placeholder="Search students or organizations..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 text-sm"
@@ -789,6 +1071,10 @@ const OrganizationCommunication = () => {
               </div>
 
               <div className="flex-1 overflow-y-auto">
+                {/* Students Section */}
+                <div className="p-3 bg-gray-50 border-b border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-700">Students</h4>
+                </div>
                 {students
                   .filter(student => 
                     !organizationMembers.some(member => member.studentEmail === student.email)
@@ -832,12 +1118,63 @@ const OrganizationCommunication = () => {
                   </motion.button>
                 ))}
 
+                {/* Organizations Section */}
+                <div className="p-3 bg-gray-50 border-b border-gray-200 mt-2">
+                  <h4 className="text-sm font-semibold text-gray-700">Organizations</h4>
+                </div>
+                {allOrganizations
+                  .filter(org =>
+                    org.organization?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    org.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    org.email?.toLowerCase().includes(searchTerm.toLowerCase())
+                  )
+                  .map((org) => (
+                  <motion.button
+                    key={org._id}
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => startNewChat(org)}
+                    disabled={loading}
+                    className="w-full p-3 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 text-left"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={org.photoURL || `https://ui-avatars.com/api/?name=${org.organization?.name || org.name}&background=4bbeff&color=fff`}
+                        alt={org.organization?.name || org.name}
+                        className="w-10 h-10 rounded-xl object-cover"
+                      />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 text-sm text-left">
+                          {org.organization?.name || org.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 text-left">{org.email}</p>
+                        {org.organization && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Building2 className="w-3 h-3 text-gray-400" />
+                            <span className="text-xs text-gray-500">
+                              {org.organization.type}
+                            </span>
+                            {org.organization.campus && (
+                              <>
+                                <MapPin className="w-3 h-3 text-gray-400" />
+                                <span className="text-xs text-gray-500">
+                                  {org.organization.campus}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.button>
+                ))}
+
                 {students.filter(student => 
                   !organizationMembers.some(member => member.studentEmail === student.email)
-                ).length === 0 && (
+                ).length === 0 && allOrganizations.length === 0 && (
                   <div className="text-center py-8">
                     <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No students found</p>
+                    <p className="text-gray-500">No users found</p>
                   </div>
                 )}
               </div>

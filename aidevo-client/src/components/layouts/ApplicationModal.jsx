@@ -1,75 +1,110 @@
-import React, { useState } from 'react';
-import { 
-  X, 
-  User, 
-  Mail, 
-  Phone, 
-  GraduationCap, 
-  MapPin, 
+import React, { useState } from "react";
+import {
+  X,
+  User,
+  Mail,
+  Phone,
+  GraduationCap,
   Building2,
   Upload,
-  AlertCircle
-} from 'lucide-react';
-import { motion } from 'framer-motion';
-import axios from 'axios';
-import useAuth from '../../hooks/useAuth';
-import { uploadToCloudinary } from '../../utils/uploadToCloudinary';
+  AlertCircle,
+} from "lucide-react";
+import { motion } from "framer-motion";
+import useAuth from "../../hooks/useAuth";
+import { uploadToCloudinary } from "../../utils/uploadToCloudinary";
+import API from "../../utils/api";
 
 const ApplicationModal = ({ organization, onClose, onSubmit }) => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [formData, setFormData] = useState({
-    fullName: user?.name || '',
-    email: user?.email || '',
-    phone: '',
-    studentId: user?.student?.studentId || '',
-    department: user?.student?.department || '',
-    session: user?.student?.session || '',
-    currentYear: '',
-    skills: '',
-    experience: '',
-    motivation: '',
-    expectations: '',
-    resume: null
-  });
 
-  const [resumePreview, setResumePreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const [formData, setFormData] = useState({
+    fullName: user?.name || user?.displayName || "",
+    email: user?.email || "",
+    phone: "",
+    studentId: user?.student?.studentId || "",
+    department: user?.student?.department || "",
+    session: user?.student?.session || "",
+    currentYear: "",
+    skills: "",
+    experience: "",
+    motivation: "",
+    expectations: "",
+    resume: null,
+  });
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    if (name === 'resume') {
-      setFormData(prev => ({ ...prev, resume: files[0] }));
-      if (files[0]) {
-        setResumePreview(URL.createObjectURL(files[0]));
+
+    if (name === "resume") {
+      const file = files?.[0];
+
+      if (!file) {
+        setFormData((prev) => ({ ...prev, resume: null }));
+        return;
       }
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+
+      const allowedTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "image/jpeg",
+        "image/png",
+      ];
+
+      const maxSize = 5 * 1024 * 1024;
+
+      if (!allowedTypes.includes(file.type)) {
+        setError("Invalid file type. Please upload PDF, DOC, DOCX, JPG, or PNG.");
+        return;
+      }
+
+      if (file.size > maxSize) {
+        setError("File size must be less than 5MB.");
+        return;
+      }
+
+      setError("");
+      setFormData((prev) => ({ ...prev, resume: file }));
+      return;
     }
+
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      // Validate required fields
+      if (!organization?.uid) {
+        throw new Error("Organization data is missing");
+      }
+
+      if (!user?.uid) {
+        throw new Error("User authentication data is missing");
+      }
+
       if (!formData.phone || !formData.currentYear || !formData.motivation) {
-        throw new Error('Please fill in all required fields');
+        throw new Error("Please fill in all required fields");
       }
 
       let resumeUrl = null;
+
       if (formData.resume) {
         resumeUrl = await uploadToCloudinary(formData.resume);
+
         if (!resumeUrl) {
-          throw new Error('Failed to upload resume');
+          throw new Error("Failed to upload resume");
         }
       }
 
       const applicationData = {
-        studentId: user.uid, // Firebase UID
-        organizationId: organization.uid, // Firebase UID from organization
+        studentId: user.uid,
+        organizationId: organization.uid,
         fullName: formData.fullName,
         email: formData.email,
         phone: formData.phone,
@@ -83,20 +118,24 @@ const ApplicationModal = ({ organization, onClose, onSubmit }) => {
         resume: resumeUrl,
       };
 
-      console.log('Submitting application with data:', applicationData);
+      console.log("Submitting application with data:", applicationData);
 
-      const response = await axios.post('http://localhost:3000/applications', applicationData);
-      
-      if (response.data.success) {
-        onSubmit();
-        onClose();
+      const response = await API.post("/applications", applicationData);
+
+      if (response.success) {
+        onSubmit?.();
+        onClose?.();
       } else {
-        throw new Error(response.data.message || 'Failed to submit application');
+        throw new Error(response.message || "Failed to submit application");
       }
-      
     } catch (error) {
-      console.error('Error submitting application:', error);
-      setError(error.response?.data?.message || error.message || 'Failed to submit application');
+      console.error("Error submitting application:", error);
+
+      setError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to submit application"
+      );
     } finally {
       setLoading(false);
     }

@@ -24,6 +24,7 @@ import axios from "axios";
 import useAuth from "../../hooks/useAuth";
 import { uploadToCloudinary } from "../../utils/uploadToCloudinary";
 import toast from "react-hot-toast";
+import API from "../../utils/api";
 
 export default function SignUp() {
   const [role, setRole] = useState("student");
@@ -300,203 +301,115 @@ export default function SignUp() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    // Password validation
-    const passwordErrors = validatePassword(formData.password);
-    if (passwordErrors.length > 0) {
-      const errorMsg = `Password must contain: ${passwordErrors.join(", ")}`;
-      setError(errorMsg);
-      toast.error("Please fix password requirements");
-      setLoading(false);
-      return;
-    }
+  let createdFirebaseUser = null;
+  let creatingToast = null;
 
-    // Confirm password validation
-    if (!validatePasswordMatch()) {
-      setError("Passwords do not match");
-      toast.error("Passwords do not match");
-      setLoading(false);
-      return;
-    }
+  try {
+    creatingToast = toast.loading("Creating your account...");
 
-    // Email validation
-    const emailError =
-      role === "student"
-        ? validateStudentEmail(formData.email)
-        : validateOrganizationEmail(formData.email);
+    let photoURL = null;
 
-    if (emailError) {
-      setError(emailError);
-      toast.error("Invalid email format");
-      setLoading(false);
-      return;
-    }
-
-    // Student-specific validation
-    if (role === "student") {
-      if (!formData.studentId) {
-        setError("Student ID is required");
-        toast.error("Student ID is required");
-        setLoading(false);
-        return;
-      }
-      if (!formData.department) {
-        setError("Please select a department");
-        toast.error("Please select a department");
-        setLoading(false);
-        return;
-      }
-      if (!formData.session) {
-        setError("Please select admission session");
-        toast.error("Please select admission session");
-        setLoading(false);
-        return;
+    if (photoFile) {
+      const uploadToast = toast.loading("Uploading profile photo...");
+      try {
+        photoURL = await handlePhotoUpload(photoFile);
+        toast.success("Photo uploaded successfully!", { id: uploadToast });
+      } catch (uploadError) {
+        toast.error("Failed to upload photo", { id: uploadToast });
+        throw uploadError;
       }
     }
 
-    // Organization-specific validation
-    if (role === "organization") {
-      if (!formData.orgName.trim()) {
-        setError("Organization name is required");
-        toast.error("Organization name is required");
-        setLoading(false);
-        return;
-      }
-      if (!formData.orgType) {
-        setError("Please select organization type");
-        toast.error("Please select organization type");
-        setLoading(false);
-        return;
-      }
-      if (!formData.roleType) {
-        setError("Please select organization sub-type");
-        toast.error("Please select organization sub-type");
-        setLoading(false);
-        return;
+    const userCredential = await createUser(formData.email, formData.password);
+    createdFirebaseUser = userCredential.user;
+
+    const userData = {
+      uid: createdFirebaseUser.uid,
+      email: formData.email,
+      name: formData.name,
+      role,
+      photoURL:
+        photoURL ||
+        (role === "organization"
+          ? `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              formData.orgName
+            )}&background=4bbeff&color=fff`
+          : `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              formData.name
+            )}&background=4bbeff&color=fff`),
+      createdAt: new Date().toISOString(),
+      ...(role === "organization"
+        ? {
+            organization: {
+              name: formData.orgName,
+              type: formData.orgType,
+              roleType: formData.roleType,
+              tagline: formData.tagline,
+              founded: formData.founded,
+              website: formData.website,
+              phone: formData.phone,
+              campus: formData.campus,
+              mission: formData.mission,
+              membershipCount: 0,
+              status: "active",
+              verified: false,
+            },
+          }
+        : {
+            student: {
+              studentId: formData.studentId,
+              department: formData.department,
+              session: formData.session,
+              interests: formData.interests,
+              year: new Date().getFullYear(),
+              status: "active",
+              verified: false,
+            },
+          }),
+    };
+
+    await API.post("/users", userData);
+
+    await updateProfileUser({
+      displayName: formData.name,
+      photoURL: userData.photoURL,
+    });
+
+    toast.success("Account created successfully!", {
+      id: creatingToast,
+    });
+
+    navigate("/dashboard");
+  } catch (error) {
+    console.error("Signup error:", error);
+
+    if (createdFirebaseUser) {
+      try {
+        await createdFirebaseUser.delete();
+        console.log("Rolled back Firebase user because Mongo save failed");
+      } catch (deleteError) {
+        console.error("Failed to rollback Firebase user:", deleteError);
       }
     }
 
-    try {
-      let photoURL = null;
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Failed to create account. Please try again.";
 
-      // Upload photo if selected
-      if (photoFile) {
-        const uploadToast = toast.loading("Uploading profile photo...");
-        try {
-          photoURL = await handlePhotoUpload(photoFile);
-          toast.success("Photo uploaded successfully!", { id: uploadToast });
-        } catch (uploadError) {
-          toast.error("Failed to upload photo", { id: uploadToast });
-          throw uploadError;
-        }
-      }
-
-      // Show creating account toast
-      const creatingToast = toast.loading("Creating your account...");
-
-      // 1. Create user in Firebase
-      const userCredential = await createUser(
-        formData.email,
-        formData.password
-      );
-      const user = userCredential.user;
-
-      // 2. Prepare user data for MongoDB
-      const userData = {
-        uid: user.uid,
-        email: formData.email,
-        name: formData.name,
-        role: role,
-        photoURL:
-          photoURL ||
-          (role === "organization"
-            ? `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                formData.orgName
-              )}&background=4bbeff&color=fff`
-            : `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                formData.name
-              )}&background=4bbeff&color=fff`),
-        createdAt: new Date().toISOString(),
-        ...(role === "organization"
-          ? {
-              organization: {
-                name: formData.orgName,
-                type: formData.orgType,
-                roleType: formData.roleType, // Add roleType here
-                tagline: formData.tagline,
-                founded: formData.founded,
-                website: formData.website,
-                phone: formData.phone,
-                campus: formData.campus,
-                mission: formData.mission,
-                membershipCount: 0,
-                status: "active",
-                verified: false,
-              },
-            }
-          : {
-              student: {
-                studentId: formData.studentId,
-                department: formData.department,
-                session: formData.session,
-                interests: formData.interests,
-                year: new Date().getFullYear(),
-                status: "active",
-                verified: false,
-              },
-            }),
-      };
-
-      // 3. Save user data to MongoDB using axios
-      await axios.post("http://localhost:3000/users", userData, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      // 4. Update Firebase profile
-      await updateProfileUser({
-        displayName: formData.name,
-        photoURL: userData.photoURL,
-      });
-
-      // Success notification
-      toast.success(
-        `Welcome to Aidevo! ${
-          role === "organization" ? "Organization" : "Student"
-        } account created successfully!`,
-        {
-          id: creatingToast,
-          duration: 4000,
-        }
-      );
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      navigate("/dashboard");
-    } catch (error) {
-      console.error("Signup error:", error);
-
-      let errorMessage = "Failed to create account. Please try again.";
-
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.code === "auth/email-already-in-use") {
-        errorMessage =
-          "This email is already registered. Please use a different email or sign in.";
-      } else if (error.message.includes("photo")) {
-        errorMessage = error.message;
-      }
-
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-      setAuthLoading(false);
-    }
-  };
+    setError(errorMessage);
+    toast.error(errorMessage, {
+      id: creatingToast || undefined,
+    });
+  } finally {
+    setLoading(false);
+    setAuthLoading(false);
+  }
+};
 
   // Password requirement component
   const PasswordRequirement = ({ met, text }) => (
